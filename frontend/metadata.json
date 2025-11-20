@@ -1,0 +1,5 @@
+{
+  "name": "Sistema Integrado de Regentes da Unilab (SIRU)",
+  "description": "Um sistema web para gerenciar reagentes dos laboratórios da Universidade da Integração Internacional da Lusofonia Afro-Brasileira (Unilab). Permite aos usuários visualizar, adicionar, editar e remover reagentes do inventário de forma eficiente.",
+  "requestFramePermissions": []
+}

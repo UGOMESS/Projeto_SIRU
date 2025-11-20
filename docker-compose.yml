@@ -1,0 +1,17 @@
+
+services:
+  db:
+    image: postgres:16 # Usando a imagem oficial do PostgreSQL versão 16
+    container_name: siru_db_postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=siru_admin
+      - POSTGRES_PASSWORD=12345678 
+      - POSTGRES_DB=siru_db
+    ports:
+      - "5432:5432" # Mapeia a porta do contêiner para a porta do seu computador
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
