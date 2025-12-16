@@ -1,17 +1,46 @@
 
 services:
+  # 1. Banco de Dados PostgreSQL
   db:
-    image: postgres:16 # Usando a imagem oficial do PostgreSQL versão 16
-    container_name: siru_db_postgres
+    image: postgres:16-alpine
+    container_name: siru_db
     restart: always
     environment:
-      - POSTGRES_USER=siru_admin
-      - POSTGRES_PASSWORD=12345678 
-      - POSTGRES_DB=siru_db
+      POSTGRES_USER: user_siru
+      POSTGRES_PASSWORD: password_siru
+      POSTGRES_DB: siru_db
     ports:
-      - "5432:5432" # Mapeia a porta do contêiner para a porta do seu computador
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  # 2. Backend (API)
+  backend:
+    build: ./backend
+    container_name: siru_api
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://user_siru:password_siru@db:5432/siru_db?schema=public
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  # 3. Frontend (React)
+  # (Opcional: Você pode continuar rodando 'npm run dev' no terminal se preferir,
+  # mas aqui deixa tudo automático)
+  frontend:
+    build: ./frontend
+    container_name: siru_web
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    stdin_open: true # Necessário para React/Vite rodar bem no Docker
 
 volumes:
   postgres_data:

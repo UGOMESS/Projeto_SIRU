@@ -1,0 +1,124 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums para padronizar status e funções
+enum Role {
+  ADMIN
+  RESEARCHER
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum Unit {
+  ML
+  L
+  G
+  KG
+  UNID
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String   // Lembre-se de salvar criptografado (bcrypt)
+  role      Role     @default(RESEARCHER)
+  createdAt DateTime @default(now())
+
+  // Relacionamentos
+  requests  Request[]
+  wasteLogs WasteLog[]
+}
+
+model Reagent {
+  id             String   @id @default(uuid())
+  name           String
+  casNumber      String?   // CAS number para identificação química
+  category       String    // Ex: Ácido, Solvente, Sal
+  description    String?
+  
+  // --- CAMPO ADICIONADO ---
+  formula        String?   // Ex: H2SO4, C2H6O
+  
+  // Controle de Estoque
+  quantity       Float     // Quantidade atual
+  unit           Unit      // Unidade de medida
+  minQuantity    Float     // Para alerta de estoque baixo
+  location       String?   // Ex: Armário A, Prateleira 2
+  
+  // Controle de Validade e Segurança
+  expirationDate DateTime
+  isControlled   Boolean   @default(false) // Se é controlado pela PF/Exército
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relacionamentos
+  requestItems   RequestItem[]
+}
+
+model Request {
+  id          String        @id @default(uuid())
+  status      RequestStatus @default(PENDING)
+  reason      String?       // Motivo da retirada (para o TCC/Pesquisa)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  // Quem pediu?
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  
+  // Quem aprovou/recusou? (Opcional, preenchido pelo Admin)
+  reviewedBy  String?       
+  
+  items       RequestItem[]
+}
+
+model RequestItem {
+  id        String  @id @default(uuid())
+  quantity  Float
+  
+  requestId String
+  request   Request @relation(fields: [requestId], references: [id])
+  
+  reagentId String
+  reagent   Reagent @relation(fields: [reagentId], references: [id])
+}
+
+// Gestão de Resíduos (Sua funcionalidade de 'Bombonas')
+model WasteContainer {
+  id             String     @id @default(uuid())
+  identifier     String     // Ex: "Bombona 01 - Solventes Halogenados"
+  type           String     // Tipo de resíduo aceito
+  capacity       Float      // Capacidade total (ex: 20L)
+  currentVolume  Float      // Volume atual ocupado
+  location       String?
+  isActive       Boolean    @default(true) // Se está em uso ou cheia/fechada
+  
+  logs           WasteLog[]
+}
+
+model WasteLog {
+  id          String   @id @default(uuid())
+  description String   // O que foi descartado
+  quantity    Float    // Quanto foi descartado
+  date        DateTime @default(now())
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  containerId String
+  container   WasteContainer @relation(fields: [containerId], references: [id])
+}

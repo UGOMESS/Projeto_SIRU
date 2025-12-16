@@ -1,37 +1,77 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Reagent, User, WithdrawalRequest, RequestStatus, ReagentCategory } from '../types';
 import SearchBar from './SearchBar';
 import ReagentList from './ReagentList';
 import AddReagentModal from './AddReagentModal';
 import { RequestWithdrawalModal } from './RequestWithdrawalModal';
-
+import { getReagents, createReagent } from '../services/api';
 
 interface InventoryProps {
     user: User;
-    reagents: Reagent[];
-    onAddReagent: (reagent: Reagent) => void;
-    onDeleteReagent: (id: string) => void;
+    onDeleteReagent: (id: string) => void; 
     onRequestWithdrawal: (request: WithdrawalRequest) => void;
 }
 
-export const Inventory: React.FC<InventoryProps> = ({ user, reagents, onAddReagent, onDeleteReagent, onRequestWithdrawal }) => {
+export const Inventory: React.FC<InventoryProps> = ({ user, onDeleteReagent, onRequestWithdrawal }) => {
+    const [reagents, setReagents] = useState<Reagent[]>([]);
+    const [loading, setLoading] = useState(true);
+
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [reagentToWithdraw, setReagentToWithdraw] = useState<Reagent | null>(null);
 
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            const data = await getReagents();
+            
+            // --- BLINDAGEM DE ERRO ---
+            // Se a API retornar erro ou algo que não é lista, evitamos o crash
+            if (!Array.isArray(data)) {
+                console.error("A API retornou dados inválidos:", data);
+                setReagents([]); 
+                return;
+            }
+
+            const formattedData = data.map((r: any) => ({
+                ...r,
+                // Garante compatibilidade entre Backend (minQuantity) e Frontend (minStockLevel)
+                minStockLevel: r.minQuantity || r.minStockLevel || 10, 
+                
+                // Mapeamento dos novos campos (se vier null do banco, usa string vazia)
+                casNumber: r.casNumber || '',
+                formula: r.formula || '',
+                location: r.location || '',
+
+                // Proteção para data: se vier null, usa data atual para não quebrar UI
+                expirationDate: r.expirationDate || new Date().toISOString()
+            }));
+
+            setReagents(formattedData);
+        } catch (error) {
+            console.error("Erro ao carregar inventário:", error);
+            setReagents([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const getStockStatus = (reagent: Reagent) => {
         if (reagent.quantity === 0) return 'esgotado';
-        if (reagent.quantity > 0 && reagent.quantity <= reagent.minStockLevel) return 'baixo';
+        if (reagent.quantity > 0 && reagent.quantity <= (reagent.minStockLevel || 10)) return 'baixo';
         return 'ok';
     }
 
     const filteredReagents = reagents.filter(r => {
         const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (r.formula && r.formula.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            r.casNumber.includes(searchTerm);
+            (r.casNumber && r.casNumber.includes(searchTerm));
 
         const matchesCategory = categoryFilter === 'all' || r.category === categoryFilter;
 
@@ -41,14 +81,24 @@ export const Inventory: React.FC<InventoryProps> = ({ user, reagents, onAddReage
         return matchesSearch && matchesCategory && matchesStatus;
     });
 
-    const handleAdd = (newReagentData: Omit<Reagent, 'id' | 'createdAt'>) => {
-        const newReagent: Reagent = {
-            id: `r${Date.now()}`,
-            createdAt: new Date().toISOString(),
-            ...newReagentData
-        };
-        onAddReagent(newReagent);
-        setIsAddModalOpen(false);
+    const handleAdd = async (newReagentData: Omit<Reagent, 'id' | 'createdAt'>) => {
+        try {
+            const savedReagent = await createReagent(newReagentData);
+            
+            const formattedReagent = {
+                ...savedReagent,
+                minStockLevel: savedReagent.minQuantity || 10,
+                casNumber: savedReagent.casNumber || '',
+                formula: savedReagent.formula || '',
+                location: savedReagent.location || '',
+                expirationDate: savedReagent.expirationDate || new Date().toISOString()
+            };
+
+            setReagents(prev => [...prev, formattedReagent]);
+            setIsAddModalOpen(false);
+        } catch (error) {
+            alert("Erro ao salvar no banco de dados. Veja o console.");
+        }
     }
     
     const handleOpenWithdrawalModal = (reagent: Reagent) => {
@@ -108,16 +158,24 @@ export const Inventory: React.FC<InventoryProps> = ({ user, reagents, onAddReage
                 </div>
                 {user.role === 'ADMIN' && (
                     <button onClick={() => setIsAddModalOpen(true)} className="bg-unilab-blue text-white px-4 py-2 rounded-md hover:bg-unilab-green font-semibold flex items-center gap-2 w-full md:w-auto justify-center flex-shrink-0">
-                       <i className="fa-solid fa-plus"></i> Adicionar Reagente
+                       <span>+</span> Adicionar Reagente
                     </button>
                 )}
             </div>
-            <ReagentList 
-                reagents={filteredReagents} 
-                onDelete={onDeleteReagent} 
-                user={user}
-                onOpenWithdrawalModal={handleOpenWithdrawalModal} 
-            />
+
+            {loading ? (
+                <div className="text-center py-10">
+                    <p className="text-gray-500 animate-pulse">Carregando estoque...</p>
+                </div>
+            ) : (
+                <ReagentList 
+                    reagents={filteredReagents} 
+                    onDelete={onDeleteReagent} 
+                    user={user}
+                    onOpenWithdrawalModal={handleOpenWithdrawalModal} 
+                />
+            )}
+
             {isAddModalOpen && <AddReagentModal onClose={() => setIsAddModalOpen(false)} onAdd={handleAdd} />}
             {reagentToWithdraw && (
                 <RequestWithdrawalModal 

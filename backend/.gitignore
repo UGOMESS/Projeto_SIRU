@@ -1,0 +1,18 @@
+# Dependências do Node
+node_modules/
+npm-debug.log
+
+# Arquivos de Build
+dist/
+build/
+
+# Variáveis de Ambiente (SENHAS)
+.env
+.env.local
+
+# Banco de Dados (Docker volume)
+postgres_data/
+
+# Logs e Sistema
+.DS_Store
+*.log

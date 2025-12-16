@@ -1,10 +1,11 @@
-
 export enum ReagentCategory {
   ACID = 'Ácido',
   BASE = 'Base',
   SOLVENT = 'Solvente',
   SALT = 'Sal',
-  OXIDIZER = 'Oxidante'
+  OXIDIZER = 'Oxidante',
+  // Adicionando um fallback caso precise
+  REAGENT = 'Reagente' 
 }
 
 export enum Unit {
@@ -23,14 +24,21 @@ export enum RequestStatus {
 export interface Reagent {
   id: string;
   name: string;
-  // FIX: Add `formula` property to the Reagent type to match its usage in components like ReagentCard and AddReagentModal.
-  formula: string;
-  casNumber: string;
-  category: ReagentCategory;
+  
+  // --- CAMPOS NOVOS (Marcados como opcionais '?' para evitar crash com dados antigos) ---
+  formula?: string;
+  casNumber?: string;
+  location?: string;
+  
+  category: ReagentCategory | string; // Aceita string caso venha algo diferente do banco
   quantity: number;
-  unit: Unit;
-  expiryDate: string;
-  location: string;
+  unit: string; // Mudamos para string para aceitar 'ML' ou 'mL' sem dar erro
+  
+  // --- CORREÇÃO DA DATA ---
+  // O backend envia expirationDate. Mantemos expiryDate opcional por compatibilidade.
+  expirationDate: string; 
+  expiryDate?: string;
+
   isControlled: boolean;
   minStockLevel: number;
   createdAt: string;
@@ -41,7 +49,7 @@ export interface WithdrawalRequest {
   reagentId: string;
   reagentName: string;
   amount: number;
-  unit: Unit;
+  unit: string;
   requestedBy: string;
   requestedAt: string;
   status: RequestStatus;
@@ -53,7 +61,7 @@ export interface WasteLog {
   id: string;
   reagentName: string;
   amount: number;
-  unit: Unit;
+  unit: string;
   disposalDate: string;
   disposedBy: string;
   classification: string;

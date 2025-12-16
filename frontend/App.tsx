@@ -137,8 +137,6 @@ export const App: React.FC = () => {
         return (
           <Inventory 
             user={currentUser} 
-            reagents={reagents}
-            onAddReagent={handleAddReagent}
             onDeleteReagent={handleDeleteReagent}
             onRequestWithdrawal={handleCreateWithdrawalRequest}
           />
