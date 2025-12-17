@@ -1,66 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Reagent, User, WithdrawalRequest, RequestStatus, ReagentCategory } from '../types';
 import SearchBar from './SearchBar';
 import ReagentList from './ReagentList';
 import AddReagentModal from './AddReagentModal';
 import { RequestWithdrawalModal } from './RequestWithdrawalModal';
-import { getReagents, createReagent } from '../services/api';
 
 interface InventoryProps {
     user: User;
+    // Agora recebemos a lista e a função de adicionar do Pai (App.tsx)
+    reagents: Reagent[]; 
+    onAddReagent: (reagent: Reagent) => void;
     onDeleteReagent: (id: string) => void; 
     onRequestWithdrawal: (request: WithdrawalRequest) => void;
 }
 
-export const Inventory: React.FC<InventoryProps> = ({ user, onDeleteReagent, onRequestWithdrawal }) => {
-    const [reagents, setReagents] = useState<Reagent[]>([]);
-    const [loading, setLoading] = useState(true);
-
+export const Inventory: React.FC<InventoryProps> = ({ 
+    user, 
+    reagents, // <--- Lista que vem do App.tsx (sempre atualizada)
+    onAddReagent, 
+    onDeleteReagent, 
+    onRequestWithdrawal 
+}) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [reagentToWithdraw, setReagentToWithdraw] = useState<Reagent | null>(null);
 
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    const fetchData = async () => {
-        try {
-            setLoading(true);
-            const data = await getReagents();
-            
-            // --- BLINDAGEM DE ERRO ---
-            // Se a API retornar erro ou algo que não é lista, evitamos o crash
-            if (!Array.isArray(data)) {
-                console.error("A API retornou dados inválidos:", data);
-                setReagents([]); 
-                return;
-            }
-
-            const formattedData = data.map((r: any) => ({
-                ...r,
-                // Garante compatibilidade entre Backend (minQuantity) e Frontend (minStockLevel)
-                minStockLevel: r.minQuantity || r.minStockLevel || 10, 
-                
-                // Mapeamento dos novos campos (se vier null do banco, usa string vazia)
-                casNumber: r.casNumber || '',
-                formula: r.formula || '',
-                location: r.location || '',
-
-                // Proteção para data: se vier null, usa data atual para não quebrar UI
-                expirationDate: r.expirationDate || new Date().toISOString()
-            }));
-
-            setReagents(formattedData);
-        } catch (error) {
-            console.error("Erro ao carregar inventário:", error);
-            setReagents([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // --- NORMALIZAÇÃO DE DADOS ---
+    // Garante que os dados vindos do App tenham os campos certos (compatibilidade minQuantity vs minStockLevel)
+    const normalizedReagents = useMemo(() => {
+        return reagents.map((r: any) => ({
+            ...r,
+            minStockLevel: r.minQuantity || r.minStockLevel || 10,
+            casNumber: r.casNumber || '',
+            formula: r.formula || '',
+            location: r.location || '',
+            expirationDate: r.expirationDate || new Date().toISOString()
+        }));
+    }, [reagents]);
 
     const getStockStatus = (reagent: Reagent) => {
         if (reagent.quantity === 0) return 'esgotado';
@@ -68,7 +46,7 @@ export const Inventory: React.FC<InventoryProps> = ({ user, onDeleteReagent, onR
         return 'ok';
     }
 
-    const filteredReagents = reagents.filter(r => {
+    const filteredReagents = normalizedReagents.filter(r => {
         const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (r.formula && r.formula.toLowerCase().includes(searchTerm.toLowerCase())) ||
             (r.casNumber && r.casNumber.includes(searchTerm));
@@ -81,24 +59,18 @@ export const Inventory: React.FC<InventoryProps> = ({ user, onDeleteReagent, onR
         return matchesSearch && matchesCategory && matchesStatus;
     });
 
-    const handleAdd = async (newReagentData: Omit<Reagent, 'id' | 'createdAt'>) => {
-        try {
-            const savedReagent = await createReagent(newReagentData);
-            
-            const formattedReagent = {
-                ...savedReagent,
-                minStockLevel: savedReagent.minQuantity || 10,
-                casNumber: savedReagent.casNumber || '',
-                formula: savedReagent.formula || '',
-                location: savedReagent.location || '',
-                expirationDate: savedReagent.expirationDate || new Date().toISOString()
-            };
-
-            setReagents(prev => [...prev, formattedReagent]);
-            setIsAddModalOpen(false);
-        } catch (error) {
-            alert("Erro ao salvar no banco de dados. Veja o console.");
-        }
+    const handleAdd = (newReagentData: Omit<Reagent, 'id' | 'createdAt'>) => {
+        // Cria um objeto completo temporário para passar pro Pai
+        // O Pai (App.tsx) vai mandar pro banco e o banco vai corrigir o ID e Data
+        const tempReagent: Reagent = {
+            ...newReagentData,
+            id: 'temp-' + Date.now(),
+            createdAt: new Date().toISOString()
+        };
+        
+        // Chama a função do App.tsx
+        onAddReagent(tempReagent);
+        setIsAddModalOpen(false);
     }
     
     const handleOpenWithdrawalModal = (reagent: Reagent) => {
@@ -163,9 +135,9 @@ export const Inventory: React.FC<InventoryProps> = ({ user, onDeleteReagent, onR
                 )}
             </div>
 
-            {loading ? (
+            {reagents.length === 0 && filteredReagents.length === 0 ? (
                 <div className="text-center py-10">
-                    <p className="text-gray-500 animate-pulse">Carregando estoque...</p>
+                    <p className="text-gray-500">Nenhum reagente encontrado no estoque.</p>
                 </div>
             ) : (
                 <ReagentList 

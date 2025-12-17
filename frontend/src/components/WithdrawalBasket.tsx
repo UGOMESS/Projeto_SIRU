@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Reagent } from '../types';
+import { Reagent } from '../../../types';
 
 export interface BasketItem {
     reagent: Reagent;

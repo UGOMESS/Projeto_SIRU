@@ -1,110 +1,52 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SIRU - Sistema Integrado de Regentes da Unilab</title>
+    <title>SIRU - Sistema Integrado de Reagentes da Unilab</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Add Font Awesome for icons -->
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
     <script>
       tailwind.config = {
         theme: {
           extend: {
             colors: {
-              'primary': { // Indigo
+              'primary': { 
                 '500': '#6366F1',
                 '600': '#4F46E5',
                 '700': '#4338CA',
               },
-              'secondary': { // Teal
+              'secondary': { 
                 '500': '#14B8A6',
                 '600': '#0D9488',
               },
-              'accent': { // Rose
+              'accent': { 
                 '500': '#F43F5E',
                 '600': '#E11D48',
               },
-              'tech': { // Violet
+              'tech': { 
                   '500': '#8B5CF6',
               },
-              // Keep old names for compatibility, but point to new palette
-              'unilab-blue': '#4338CA', // primary-700
-              'unilab-green': '#0D9488', // secondary-600
+              // Cores legadas para compatibilidade
+              'unilab-blue': '#4338CA', 
+              'unilab-green': '#0D9488', 
             }
           }
         }
       }
     </script>
-    <style type="text/tailwindcss">
-      @layer base {
-        .prose {
-          @apply text-gray-700;
-        }
-        .prose h1, .prose h2, .prose h3 {
-          @apply font-bold text-gray-800;
-        }
-        .prose strong {
-          @apply font-bold;
-        }
-        .prose ul {
-            @apply list-disc list-inside;
-        }
-        .prose li {
-            @apply mb-1;
-        }
-      }
-      @layer components {
-        .high-contrast {
-            background-color: #000 !important;
-            color: #FFFF00 !important;
-        }
-        .high-contrast div, .high-contrast header, .high-contrast main, .high-contrast footer, .high-contrast nav, .high-contrast aside, .high-contrast section, .high-contrast article, .high-contrast button, .high-contrast input, .high-contrast select, .high-contrast table, .high-contrast tbody, .high-contrast thead, .high-contrast tr, .high-contrast td, .high-contrast th,
-        .high-contrast [class*="bg-"] {
-            background-color: #000 !important;
-            color: #FFFF00 !important;
-            border-color: #FFFF00 !important;
-        }
-         .high-contrast .prose {
-            color: #FFFF00 !important;
-        }
-        .high-contrast a, .high-contrast button {
-            color: #87CEEB !important; /* Light blue for links */
-        }
-        .high-contrast img, .high-contrast svg {
-            filter: grayscale(100%) contrast(300%);
-        }
-        .high-contrast [class*="text-gray-"], .high-contrast [class*="text-slate-"] {
-            color: #FFFF00 !important;
-        }
-        .high-contrast [class*="text-white"] {
-            color: #000 !important;
-        }
-         .high-contrast [class*="bg-unilab-blue"], .high-contrast [class*="bg-primary-"] {
-            background-color: #000 !important;
-            color: #87CEEB !important;
-        }
-      }
-    </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "marked": "https://cdn.jsdelivr.net/npm/marked@12.0.2/lib/marked.esm.js"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
-</head>
+  </head>
+  
   <body class="bg-gray-100">
     <div id="root"></div>
-    <!-- PDF Generation Libraries -->
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf-autotable.umd.min.js"></script>
-    <script type="module" src="/index.tsx"></script>
+
+    <script type="module" src="/src/index.tsx"></script>
   </body>
 </html>

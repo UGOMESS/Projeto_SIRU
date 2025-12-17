@@ -48,8 +48,6 @@ model Reagent {
   casNumber      String?   // CAS number para identificação química
   category       String    // Ex: Ácido, Solvente, Sal
   description    String?
-  
-  // --- CAMPO ADICIONADO ---
   formula        String?   // Ex: H2SO4, C2H6O
   
   // Controle de Estoque

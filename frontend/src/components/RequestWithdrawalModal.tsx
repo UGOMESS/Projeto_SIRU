@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Reagent, User } from '../types';
+import { Reagent, User } from '../../../types';
 
 interface RequestWithdrawalModalProps {
   reagent: Reagent | null;

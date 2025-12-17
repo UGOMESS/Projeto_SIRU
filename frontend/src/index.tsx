@@ -1,8 +1,8 @@
-
+// frontend/src/index.tsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-// FIX: Correctly import 'App' as a named export instead of a default export.
 import { App } from './App';
+import './index.css'; // <--- OBRIGATÓRIO: Carrega os estilos globais
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

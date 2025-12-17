@@ -133,59 +133,115 @@ Para executar o projeto em seu ambiente local, siga os passos abaixo rigorosamen
     git clone https://github.com/seu-usuario/Projeto_SIRU.git
     ```
 
-2.  **⚠️ IMPORTANTE: Acesse a pasta do Frontend:**
-    Todo o código da aplicação web reside na pasta `frontend`. Você **deve** entrar neste diretório antes de executar qualquer outro comando.
-    ```bash
-    cd Projeto_SIRU/frontend
-    ```
+2.  **Abrir o VS Code no Modo WSL:**
+  - Abra o VS Code.
+  - Clique no ícone azul/verde no canto **inferior esquerdo** (`><`).
+  - Selecione "Connect to WSL".
+  - Selecione sua distro
+  - Abra a pasta do projeto clonado (`File > Open Folder...`).
 
-3.  **Instale as dependências:**
-    (Certifique-se de que está dentro da pasta `frontend`)
-    ```bash
-    npm install
-    ```
+3.  **Configurando o Banco de Dados**
 
-4.  **Configure as variáveis de ambiente:**
-    - Crie um arquivo chamado `.env` na raiz da pasta `frontend`.
-    - Adicione sua chave de API do Google Gemini a este arquivo:
-      ```
-      VITE_API_KEY=SUA_CHAVE_DE_API_AQUI
-      ```
+    
+-  Abra o terminal integrado do VS Code (`Ctrl + J`).
+-  Na raiz do projeto, inicie o container do banco:
+```bash
+docker-compose up -d db
+```
+  *(O Docker irá baixar a imagem do PostgreSQL e criar o banco automaticamente).*
 
-5.  **Suba os containers (Se aplicável):**
-    Se o projeto contiver um arquivo `docker-compose.yml` na raiz, inicie os serviços de backend/banco:
-    ```bash
-    # Na raiz do projeto (fora da pasta frontend)
-    docker compose up -d
-    ```
+4.  **Instalando Dependências**
 
-6.  **Execute o servidor de desenvolvimento Frontend:**
-    ```bash
-    # Dentro da pasta frontend
-    npm run dev
-    ```
-    O aplicativo estará disponível geralmente em `http://localhost:5173`.
+**No Backend:**
+
+Em um novo terminal ( execute um por vez )
+```
+cd backend
+npm install
+npx prisma generate  # Configura o cliente do banco
+npx prisma db push   # Cria as tabelas no banco de dados
+```
+**No Frontend:**
+
+Em um novo terminal
+```
+cd frontend
+npm install
+```
+
+5.  **Configure as variáveis de ambiente:**
+  - Crie um arquivo chamado `.env` na raiz da pasta `frontend`.
+  - Adicione sua chave de API do Google Gemini a este arquivo:
+  ```
+  VITE_API_KEY=SUA_CHAVE_DE_API_AQUI
+  ```
+
 
 ---
 
+## 🚀 Guia Diário: Como Iniciar o Sistema
+
+**Passo 1: Ligar o Banco de Dados**
+- Abra o VS Code conectado ao WSL.
+- No terminal, certifique-se de que o container do banco está rodando:
+```
+docker start siru_db
+````
+(Dica: Você pode verificar se o container ficou verde no aplicativo Docker Desktop).
+
+**Passo 2: Ligar o Backend**
+- Em um novo terminal, entre na pasta do backend:
+
+````
+cd backend
+````
+- Inicie o servidor:
+````
+npx ts-node src/server.ts
+````
+- Confirmação: Acesse http://localhost:3000 no navegador.
+
+- Você deve ver a mensagem: "API do SIRU está online! 🧪".
+
+- Mantenha este terminal aberto.
+
+**Passo 3: Ligar o Frontend (Sistema)**
+
+- Abra um novo terminal (clique no + do VS Code)
+- Entre na pasta do frontend:
+
+````
+cd frontend
+````
+
+- Inicie a aplicação:
+
+```
+npm run dev
+```
+
+- Acesso: O terminal mostrará o link local.
+- Acesse http://localhost:3001 (ou a porta indicada) para usar o sistema completo.
+
+---
 ## Estrutura de Arquivos
 
 A estrutura do projeto está organizada da seguinte forma para facilitar a manutenção e o desenvolvimento:
 
 ```
-/frontend
-├── public/
-│   └── ... (arquivos públicos)
-├── src/
-│   ├── index.tsx         # Ponto de entrada da aplicação React
-│   ├── App.tsx           # Componente principal
-│   ├── types.ts          # Definições de tipos do TypeScript
-│   ├── constants.ts      # Dados mockados e constantes
-│   ├── services/
-│   │   └── geminiService.ts # Comunicação com a API do Gemini
-│   └── components/       # Componentes da interface
-├── package.json
-├── vite.config.ts
+/Projeto_SIRU
+├── backend/            # API e Lógica do Servidor
+│   ├── src/
+│   │   ├── server.ts   # Ponto de entrada do backend
+│   │   └── ...
+│   └── prisma/         # Schema do Banco de Dados
+├── frontend/           # Interface do Usuário (React)
+│   ├── src/
+│   │   ├── components/ # Componentes reutilizáveis
+│   │   ├── services/   # Comunicação com API/Backend
+│   │   └── types.ts    # Tipagem TypeScript
+│   └── ...
+├── docker-compose.yml  # Configuração dos containers
 └── README.md
 ```
 
@@ -271,7 +327,12 @@ Para propor mudanças no projeto (como corrigir um bug ou adicionar uma nova fun
 Pronto! Agora os mantenedores do projeto original poderão revisar suas alterações e, se estiver tudo certo, incorporá-las ao código principal.
 
 ---
-
+## Dicas
+**Visualizar a estrutura e organização do projeto via terminal**
+```
+tree -I "node_modules|dist|.git|.next"
+```
+obs: dessa forma os arquivos do node_mudules são desconsiderados, pois são muitos e acaba sendo desnecessario.
 ## Licença
 
 Este projeto está licenciado sob a Licença MIT. Veja o arquivo `LICENSE` para mais detalhes.

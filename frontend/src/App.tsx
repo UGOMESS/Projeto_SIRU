@@ -1,5 +1,6 @@
+// frontend/src/App.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -9,7 +10,8 @@ import { SafetyAssistant } from './components/SafetyAssistant';
 import { Withdrawals } from './components/Withdrawals';
 import { AccessibilityDock } from './components/AccessibilityDock';
 import { User, Reagent, WithdrawalRequest, WasteLog, RequestStatus } from './types';
-import { MOCK_REAGENTS, MOCK_WITHDRAWALS, MOCK_WASTE_LOGS, MOCK_NEWS } from './constants';
+import { MOCK_WITHDRAWALS, MOCK_WASTE_LOGS, MOCK_NEWS } from './constants';
+import { api } from './services/api';
 
 const MOCK_ADMIN: User = {
   id: 'u1',
@@ -38,29 +40,45 @@ export const App: React.FC = () => {
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [fontSize, setFontSize] = useState(16);
 
-  // Global State (Lifted Up)
-  const [reagents, setReagents] = useState<Reagent[]>(MOCK_REAGENTS);
+  // --- ESTADO GLOBAL ---
+  const [reagents, setReagents] = useState<Reagent[]>([]); 
+  
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>(MOCK_WITHDRAWALS);
   const [wasteLogs, setWasteLogs] = useState<WasteLog[]>(MOCK_WASTE_LOGS);
 
   const handleFontSizeChange = (increase: boolean) => {
     setFontSize(prev => {
         const newSize = increase ? prev + 1 : prev - 1;
-        return Math.max(12, Math.min(22, newSize)); // Clamp font size between 12px and 22px
+        return Math.max(12, Math.min(22, newSize)); 
     });
   };
 
-  // Toast Helper
   const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
   };
 
+  // --- 1. BUSCAR DADOS DO BACKEND AO INICIAR ---
+  useEffect(() => {
+    const fetchReagents = async () => {
+      try {
+        const response = await api.get('/reagents');
+        setReagents(response.data);
+        console.log("Conexão bem-sucedida! Dados carregados:", response.data);
+      } catch (error) {
+        console.error("Erro ao conectar com a API:", error);
+        showToast("Erro ao carregar dados do servidor.", "error");
+      }
+    };
+
+    fetchReagents();
+  }, []);
+
   const toggleUserRole = () => {
     setCurrentUser(prev => {
       const newUser = prev.role === 'ADMIN' ? MOCK_RESEARCHER : MOCK_ADMIN;
       showToast(`Perfil alternado para: ${newUser.role === 'ADMIN' ? 'Administrador' : 'Pesquisador'}`, 'info');
-      // Force return to dashboard if switching to restricted role while on restricted page
+      
       if (newUser.role === 'RESEARCHER' && (currentView === 'waste' || currentView === 'withdrawals')) {
         setCurrentView('dashboard');
       }
@@ -70,14 +88,38 @@ export const App: React.FC = () => {
 
   // --- Handlers ---
 
-  const handleAddReagent = (newReagent: Reagent) => {
-    setReagents(prev => [newReagent, ...prev]);
-    showToast('Reagente adicionado ao estoque com sucesso!');
+  // --- 2. SALVAR NO BACKEND (POST) ---
+  const handleAddReagent = async (newReagent: Reagent) => {
+    try {
+      const { id, ...reagentData } = newReagent;
+      
+      const response = await api.post('/reagents', reagentData);
+      
+      setReagents(prev => [response.data, ...prev]);
+      showToast('Reagente salvo no Banco de Dados!');
+    } catch (error) {
+      console.error("Erro ao salvar:", error);
+      showToast('Erro ao salvar no banco de dados.', 'error');
+    }
   };
 
-  const handleDeleteReagent = (id: string) => {
-    setReagents(prev => prev.filter(r => r.id !== id));
-    showToast('Reagente removido do sistema.');
+  // --- 3. EXCLUIR DO BACKEND (DELETE) ---
+  const handleDeleteReagent = async (id: string) => {
+    if (!window.confirm("Tem certeza que deseja excluir este reagente permanentemente?")) {
+        return;
+    }
+
+    try {
+        await api.delete(`/reagents/${id}`);
+        
+        // Atualiza a lista removendo o item
+        setReagents(prevReagents => prevReagents.filter(item => item.id !== id));
+        
+        showToast('Reagente excluído com sucesso.');
+    } catch (error) {
+        console.error("Erro ao excluir:", error);
+        showToast('Erro ao excluir do banco de dados.', 'error');
+    }
   };
 
   const handleCreateWithdrawalRequest = (newRequest: WithdrawalRequest) => {
@@ -135,8 +177,12 @@ export const App: React.FC = () => {
         );
       case 'inventory':
         return (
+          // --- AQUI ESTÁ A MÁGICA ---
+          // Agora passamos "reagents" e "onAddReagent" para o Inventory
           <Inventory 
             user={currentUser} 
+            reagents={reagents} // <--- Lista atualizada
+            onAddReagent={handleAddReagent} // <--- Função de adicionar
             onDeleteReagent={handleDeleteReagent}
             onRequestWithdrawal={handleCreateWithdrawalRequest}
           />
@@ -192,7 +238,6 @@ export const App: React.FC = () => {
         />
         
         <main id="main-content" className={`flex-1 p-8 overflow-y-auto h-[calc(100vh-120px)] relative transition-all duration-300 ${isSidebarCollapsed ? 'ml-20' : 'ml-72'}`}>
-          {/* Toast Notification */}
           {toast && (
             <div className={`fixed top-36 right-6 z-50 px-6 py-3 rounded-xl shadow-lg transform transition-all duration-300 flex items-center gap-3 ${
               toast.type === 'success' ? 'bg-green-600 text-white' : 

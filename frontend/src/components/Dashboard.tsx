@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { User, Reagent, WasteLog, UniversityNews } from '../types';
+import { User, Reagent, WasteLog, UniversityNews } from '../../../types';
 
 interface DashboardProps {
     user: User;

@@ -2,7 +2,8 @@
 import axios from 'axios';
 
 // Cria a conexão com o backend rodando na porta 3000
-const api = axios.create({
+// ADICIONADO "export" AQUI PARA O App.tsx FUNCIONAR
+export const api = axios.create({
   baseURL: 'http://localhost:3000', 
 });
 
@@ -28,4 +29,5 @@ export const createReagent = async (reagentData: any) => {
   }
 };
 
+// Mantém o default também por compatibilidade
 export default api;

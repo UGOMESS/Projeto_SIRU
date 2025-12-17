@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react';
+// CORREÇÃO: Caminho do import ajustado para "../types"
 import { WithdrawalRequest, RequestStatus } from '../types';
 
 // Extend window type to include jsPDF and autoTable

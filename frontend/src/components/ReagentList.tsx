@@ -1,5 +1,5 @@
 import React from 'react';
-import { type Reagent, type User } from '../types';
+import { type Reagent, type User } from '../../../types';
 import ReagentCard from './ReagentCard';
 
 interface ReagentListProps {

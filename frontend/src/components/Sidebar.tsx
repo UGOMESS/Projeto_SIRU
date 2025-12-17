@@ -1,7 +1,7 @@
 
 
 import React, { useState } from 'react';
-import { User, Reagent } from '../types';
+import { User, Reagent } from '../../../types';
 
 interface SidebarProps {
   activeView: string;

@@ -1,0 +1,90 @@
+/* =========================================
+   1. ESTILOS GLOBAIS (Scrollbar)
+   ========================================= */
+
+/* Para navegadores baseados em Webkit (Chrome, Safari, Edge) */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #c5c5c5;
+  border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Para Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c5c5c5 #f1f1f1;
+}
+
+/* =========================================
+   2. MODO ALTO CONTRASTE
+   (CSS Puro para garantir compatibilidade)
+   ========================================= */
+
+body.high-contrast {
+  background-color: #000000 !important;
+  color: #FFFF00 !important;
+}
+
+.high-contrast * {
+  border-color: #FFFF00 !important;
+}
+
+.high-contrast div, 
+.high-contrast header, 
+.high-contrast main, 
+.high-contrast footer, 
+.high-contrast nav, 
+.high-contrast aside, 
+.high-contrast section, 
+.high-contrast article, 
+.high-contrast table, 
+.high-contrast tbody, 
+.high-contrast thead, 
+.high-contrast tr, 
+.high-contrast td, 
+.high-contrast th,
+.high-contrast input, 
+.high-contrast select, 
+.high-contrast textarea {
+  background-color: #000000 !important;
+  color: #FFFF00 !important;
+}
+
+/* Links e Botões em Azul Claro para contraste no preto */
+.high-contrast a, 
+.high-contrast button {
+  color: #87CEEB !important; 
+  text-decoration: underline;
+}
+
+.high-contrast button {
+  border: 1px solid #FFFF00 !important;
+}
+
+/* Imagens em escala de cinza */
+.high-contrast img, 
+.high-contrast svg {
+  filter: grayscale(100%) contrast(150%);
+}
+
+/* Forçar cores específicas do Tailwind a obedecerem o contraste */
+.high-contrast [class*="bg-"] {
+  background-color: #000000 !important;
+}
+
+.high-contrast [class*="text-"] {
+  color: #FFFF00 !important;
+}

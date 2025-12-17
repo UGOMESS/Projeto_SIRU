@@ -1,4 +1,6 @@
+// frontend/src/constants.ts
 
+// 1. CORREÇÃO DE IMPORT: Removemos o "/src" pois já estamos nele
 import { Reagent, WithdrawalRequest, WasteLog, ReagentCategory, Unit, RequestStatus, UniversityNews } from './types';
 
 export const MOCK_REAGENTS: Reagent[] = [
@@ -10,7 +12,8 @@ export const MOCK_REAGENTS: Reagent[] = [
     category: ReagentCategory.ACID,
     quantity: 500,
     unit: Unit.ML,
-    expiryDate: '2025-12-31',
+    // 2. CORREÇÃO: Mudado de expiryDate para expirationDate
+    expirationDate: '2025-12-31', 
     location: 'Armário A1',
     isControlled: false,
     minStockLevel: 100,
@@ -24,7 +27,7 @@ export const MOCK_REAGENTS: Reagent[] = [
     category: ReagentCategory.BASE,
     quantity: 200,
     unit: Unit.G,
-    expiryDate: '2026-06-30',
+    expirationDate: '2026-06-30', // Correção aqui
     location: 'Armário B2',
     isControlled: false,
     minStockLevel: 250,
@@ -38,7 +41,7 @@ export const MOCK_REAGENTS: Reagent[] = [
     category: ReagentCategory.SOLVENT,
     quantity: 2.5,
     unit: Unit.L,
-    expiryDate: '2024-01-15', // Expired
+    expirationDate: '2024-01-15', // Correção aqui (Vencido)
     location: 'Prateleira C3',
     isControlled: true,
     minStockLevel: 1,
@@ -52,7 +55,7 @@ export const MOCK_REAGENTS: Reagent[] = [
     category: ReagentCategory.SALT,
     quantity: 100,
     unit: Unit.G,
-    expiryDate: '2027-08-10',
+    expirationDate: '2027-08-10', // Correção aqui
     location: 'Armário de Controlados',
     isControlled: true,
     minStockLevel: 20,
@@ -66,7 +69,7 @@ export const MOCK_REAGENTS: Reagent[] = [
     category: ReagentCategory.OXIDIZER,
     quantity: 0,
     unit: Unit.KG,
-    expiryDate: '2025-05-20',
+    expirationDate: '2025-05-20', // Correção aqui
     location: 'Prateleira D1',
     isControlled: false,
     minStockLevel: 0.1,
