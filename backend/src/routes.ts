@@ -10,6 +10,7 @@ router.get('/', (req, res) => {
 
 router.get('/reagents', ReagentController.index);
 router.post('/reagents', ReagentController.create);
+router.put('/reagents/:id', ReagentController.update);
 router.delete('/reagents/:id', ReagentController.delete);
 
 export { router };

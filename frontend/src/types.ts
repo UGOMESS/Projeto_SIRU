@@ -1,3 +1,5 @@
+// frontend/src/types.ts
+
 export enum ReagentCategory {
   ACID = 'Ácido',
   BASE = 'Base',
@@ -25,22 +27,28 @@ export interface Reagent {
   id: string;
   name: string;
   
-  // --- CAMPOS NOVOS (Marcados como opcionais '?' para evitar crash com dados antigos) ---
+  // --- CAMPOS NOVOS ---
   formula?: string;
   casNumber?: string;
   location?: string;
   
-  category: ReagentCategory | string; // Aceita string caso venha algo diferente do banco
+  // Adicione a descrição aqui:
+  description?: string; 
+
+  category: ReagentCategory | string; 
   quantity: number;
-  unit: string; // Mudamos para string para aceitar 'ML' ou 'mL' sem dar erro
+  unit: string; 
   
   // --- CORREÇÃO DA DATA ---
-  // O backend envia expirationDate. Mantemos expiryDate opcional por compatibilidade.
   expirationDate: string; 
   expiryDate?: string;
 
   isControlled: boolean;
   minStockLevel: number;
+  
+  // Adicione minQuantity para evitar erro se o banco mandar esse nome
+  minQuantity?: number; 
+
   createdAt: string;
 }
 

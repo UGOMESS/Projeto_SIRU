@@ -1,33 +1,53 @@
-import React, { useState } from 'react';
+// frontend/src/components/AddReagentModal.tsx
+import React, { useState, useEffect } from 'react';
 import { Reagent, ReagentCategory } from '../types';
 
 interface AddReagentModalProps {
     onClose: () => void;
-    onAdd: (reagent: Omit<Reagent, 'id' | 'createdAt'>) => void;
+    onAdd: (reagent: any) => void; // Usamos any aqui para facilitar a compatibilidade entre Create/Update
+    // --- NOVOS PROPS PARA EDIÇÃO ---
+    initialData?: Reagent;
+    isEditing?: boolean;
 }
 
-export default function AddReagentModal({ onClose, onAdd }: AddReagentModalProps) {
-    // Campos Obrigatórios
-    const [name, setName] = useState('');
-    const [category, setCategory] = useState<ReagentCategory>(ReagentCategory.SOLVENT);
-    const [quantity, setQuantity] = useState('');
-    const [unit, setUnit] = useState('ML');
-    const [expirationDate, setExpirationDate] = useState('');
+export default function AddReagentModal({ 
+    onClose, 
+    onAdd, 
+    initialData, 
+    isEditing = false 
+}: AddReagentModalProps) {
+    
+    // Função para formatar data (YYYY-MM-DD) para o input
+    const formatDate = (isoString?: string) => {
+        if (!isoString) return '';
+        return isoString.split('T')[0];
+    };
+
+    // --- ESTADOS (Inicializados com initialData se existir) ---
+    const [name, setName] = useState(initialData?.name || '');
+    const [category, setCategory] = useState<ReagentCategory>(initialData?.category || ReagentCategory.SOLVENT);
+    const [quantity, setQuantity] = useState(initialData?.quantity?.toString() || '');
+    const [unit, setUnit] = useState(initialData?.unit || 'ML');
+    const [expirationDate, setExpirationDate] = useState(formatDate(initialData?.expirationDate) || '');
 
     // Campos Opcionais
-    const [casNumber, setCasNumber] = useState('');
-    const [formula, setFormula] = useState('');
-    const [location, setLocation] = useState('');
-    const [description, setDescription] = useState(''); // <--- NOVO STATE
+    const [casNumber, setCasNumber] = useState(initialData?.casNumber || '');
+    const [formula, setFormula] = useState(initialData?.formula || '');
+    const [location, setLocation] = useState(initialData?.location || '');
+    const [description, setDescription] = useState(initialData?.description || ''); 
     
     // Configurações
-    const [minStockLevel, setMinStockLevel] = useState('10');
-    const [isControlled, setIsControlled] = useState(false);
+    // Nota: Suportando minStockLevel (novo) ou minQuantity (banco legado)
+    const [minStockLevel, setMinStockLevel] = useState(
+        initialData?.minStockLevel?.toString() || 
+        (initialData as any)?.minQuantity?.toString() || 
+        '10'
+    );
+    const [isControlled, setIsControlled] = useState(initialData?.isControlled || false);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
-        // Validação básica
         if (!name || !quantity || !expirationDate) {
             alert("Preencha os campos obrigatórios!");
             return;
@@ -39,22 +59,24 @@ export default function AddReagentModal({ onClose, onAdd }: AddReagentModalProps
             quantity: Number(quantity),
             unit,
             minStockLevel: Number(minStockLevel),
-            expirationDate,
+            expirationDate, // O Backend ou App.tsx trata a conversão de data
             isControlled,
             casNumber,
             formula,
             location,
-            description // <--- Enviando a descrição
-        } as any);
+            description
+        });
     };
 
     return (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
             <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full m-4">
                 
-                {/* Cabeçalho */}
+                {/* Cabeçalho Dinâmico */}
                 <div className="flex justify-between items-center p-5 border-b border-gray-200">
-                    <h3 className="text-xl font-semibold text-gray-900">Novo Reagente</h3>
+                    <h3 className="text-xl font-semibold text-gray-900">
+                        {isEditing ? 'Editar Reagente' : 'Novo Reagente'}
+                    </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
                 </div>
 
@@ -84,7 +106,7 @@ export default function AddReagentModal({ onClose, onAdd }: AddReagentModalProps
                         </div>
                     </div>
 
-                    {/* --- NOVA LINHA: Descrição --- */}
+                    {/* Linha: Descrição */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Descrição / Observações</label>
                         <textarea 
@@ -95,7 +117,6 @@ export default function AddReagentModal({ onClose, onAdd }: AddReagentModalProps
                             placeholder="Detalhes adicionais, pureza, marca, etc..."
                         />
                     </div>
-                    {/* ----------------------------- */}
 
                     {/* Linha 3: Categoria e Validade */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -151,7 +172,12 @@ export default function AddReagentModal({ onClose, onAdd }: AddReagentModalProps
                     {/* Botões */}
                     <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">Cancelar</button>
-                        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 shadow-sm">Salvar Reagente</button>
+                        <button 
+                            type="submit" 
+                            className={`px-4 py-2 text-white rounded-md shadow-sm ${isEditing ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                        >
+                            {isEditing ? 'Salvar Alterações' : 'Adicionar Reagente'}
+                        </button>
                     </div>
                 </form>
             </div>

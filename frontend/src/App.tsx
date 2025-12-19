@@ -11,7 +11,8 @@ import { Withdrawals } from './components/Withdrawals';
 import { AccessibilityDock } from './components/AccessibilityDock';
 import { User, Reagent, WithdrawalRequest, WasteLog, RequestStatus } from './types';
 import { MOCK_WITHDRAWALS, MOCK_WASTE_LOGS, MOCK_NEWS } from './constants';
-import { api } from './services/api';
+// Importamos a nova função updateReagent
+import { api, updateReagent } from './services/api'; 
 
 const MOCK_ADMIN: User = {
   id: 'u1',
@@ -122,6 +123,24 @@ export const App: React.FC = () => {
     }
   };
 
+  // --- 4. ATUALIZAR NO BACKEND (UPDATE) ---
+  const handleUpdateReagent = async (updatedReagent: Reagent) => {
+    try {
+      // Chama a API passando o ID e o objeto completo
+      const savedReagent = await updateReagent(updatedReagent.id, updatedReagent);
+
+      // Atualiza a lista local trocando o antigo pelo novo (baseado no ID)
+      setReagents(prev => prev.map(item => 
+        item.id === savedReagent.id ? savedReagent : item
+      ));
+
+      showToast('Reagente atualizado com sucesso!');
+    } catch (error) {
+      console.error("Erro ao atualizar:", error);
+      showToast('Erro ao atualizar no banco de dados.', 'error');
+    }
+  };
+
   const handleCreateWithdrawalRequest = (newRequest: WithdrawalRequest) => {
     setWithdrawals(prev => [newRequest, ...prev]);
     showToast('Solicitação enviada para aprovação!', 'success');
@@ -177,13 +196,12 @@ export const App: React.FC = () => {
         );
       case 'inventory':
         return (
-          // --- AQUI ESTÁ A MÁGICA ---
-          // Agora passamos "reagents" e "onAddReagent" para o Inventory
           <Inventory 
             user={currentUser} 
-            reagents={reagents} // <--- Lista atualizada
-            onAddReagent={handleAddReagent} // <--- Função de adicionar
+            reagents={reagents} 
+            onAddReagent={handleAddReagent} 
             onDeleteReagent={handleDeleteReagent}
+            onUpdateReagent={handleUpdateReagent} // <--- Passando a função nova (vai dar erro temporário no TS)
             onRequestWithdrawal={handleCreateWithdrawalRequest}
           />
         );

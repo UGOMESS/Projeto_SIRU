@@ -17,6 +17,7 @@ O SIRU é um sistema web moderno projetado para otimizar o gerenciamento de reag
 - [Como Começar](#como-começar)
   - [Pré-requisitos](#pré-requisitos)
   - [Instalação](#instalação)
+  - [Guia Diário: Como Iniciar o Sistema](#-guia-diário-como-iniciar-o-sistema)
 - [Estrutura de Arquivos](#estrutura-de-arquivos)
 - [Guia Rápido de Git e GitHub](#guia-rápido-de-git-e-github)
 - [Licença](#licença)
@@ -183,9 +184,9 @@ npm install
 
 **Passo 1: Ligar o Banco de Dados**
 - Abra o VS Code conectado ao WSL.
-- No terminal, certifique-se de que o container do banco está rodando:
+- No terminal, ligue o Banco de Dados com o seguinte comando:
 ```
-docker start siru_db
+docker-compose up -d db
 ````
 (Dica: Você pode verificar se o container ficou verde no aplicativo Docker Desktop).
 

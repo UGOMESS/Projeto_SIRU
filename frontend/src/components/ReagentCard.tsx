@@ -1,3 +1,5 @@
+// frontend/src/components/ReagentCard.tsx
+
 import React from 'react';
 import { type Reagent, ReagentCategory, type User } from '../types';
 
@@ -6,11 +8,20 @@ interface ReagentCardProps {
   onDelete: (id: string) => void;
   user: User;
   onOpenWithdrawalModal: (reagent: Reagent) => void;
+  // 1. Recebendo a função onEdit
+  onEdit: (reagent: Reagent) => void;
 }
 
 const TrashIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+  </svg>
+);
+
+// 2. Novo ícone de Edição (Lápis)
+const EditIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
   </svg>
 );
 
@@ -35,36 +46,33 @@ const getStockStatus = (reagent: Reagent) => {
   return { text: 'OK', style: 'bg-green-200 text-green-800' };
 }
 
-// Função para formatar a data visualmente
 const formatDate = (dateString: string | Date | undefined) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'Data Inválida';
-    // UTC garante consistência visual (evita recuar 1 dia por fuso horário)
     return date.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 };
 
-const ReagentTableRow: React.FC<ReagentCardProps> = ({ reagent, onDelete, user, onOpenWithdrawalModal }) => {
-  // 1. Resolve qual campo de data usar (backend novo vs mock antigo)
+const ReagentTableRow: React.FC<ReagentCardProps> = ({ 
+  reagent, 
+  onDelete, 
+  user, 
+  onOpenWithdrawalModal,
+  onEdit // Destruturando
+}) => {
   const dateValue = reagent.expirationDate || (reagent as any).expiryDate;
   
-  // 2. Lógica de "Vencido" corrigida (Ignora horas/minutos)
   const isExpired = (() => {
       if (!dateValue) return false;
       const validDate = new Date(dateValue);
       if (isNaN(validDate.getTime())) return false;
 
       const today = new Date();
-      // Zera as horas para comparar apenas o calendário
       today.setHours(0, 0, 0, 0);
       
-      // Cria uma cópia da data de validade e zera as horas também
       const compareDate = new Date(validDate);
-      // Ajuste importante: Se a string for UTC (ex: T00:00:00Z), o new Date converte para local.
-      // Aqui garantimos a comparação simples de timestamp
       compareDate.setHours(0, 0, 0, 0);
 
-      // Só é vencido se a data for estritamente anterior a hoje (ontem ou antes)
       return compareDate.getTime() < today.getTime();
   })();
   
@@ -83,7 +91,7 @@ const ReagentTableRow: React.FC<ReagentCardProps> = ({ reagent, onDelete, user, 
         </div>
       </td>
 
-      {/* 2. Fórmula (Campo Novo) */}
+      {/* 2. Fórmula */}
       <td className="px-6 py-4 whitespace-nowrap">
          <div className="text-sm text-gray-700 font-mono bg-gray-50 px-2 py-1 rounded inline-block">
              {reagent.formula || '-'}
@@ -97,7 +105,7 @@ const ReagentTableRow: React.FC<ReagentCardProps> = ({ reagent, onDelete, user, 
         </span>
       </td>
 
-      {/* 4. Localização (Campo Novo) */}
+      {/* 4. Localização */}
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
          {reagent.location || '-'}
       </td>
@@ -134,13 +142,26 @@ const ReagentTableRow: React.FC<ReagentCardProps> = ({ reagent, onDelete, user, 
             >
                <span>Retirar</span>
             </button>
+            
             {user.role === 'ADMIN' && (
-               <button 
-                 onClick={() => onDelete(reagent.id)}
-                 title="Excluir Reagente"
-                 className="text-red-600 hover:text-red-800 transition-colors">
-                 <TrashIcon/>
-               </button>
+               <>
+                 {/* 3. Botão de Editar */}
+                 <button 
+                    onClick={() => onEdit(reagent)} 
+                    title="Editar Reagente"
+                    className="text-orange-500 hover:text-orange-700 transition-colors"
+                 >
+                   <EditIcon />
+                 </button>
+
+                 {/* Botão de Excluir */}
+                 <button 
+                   onClick={() => onDelete(reagent.id)}
+                   title="Excluir Reagente"
+                   className="text-red-600 hover:text-red-800 transition-colors">
+                   <TrashIcon/>
+                 </button>
+               </>
             )}
          </div>
       </td>

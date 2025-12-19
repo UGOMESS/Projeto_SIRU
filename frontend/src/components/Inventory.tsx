@@ -1,3 +1,5 @@
+// frontend/src/components/Inventory.tsx
+
 import React, { useState, useMemo } from 'react';
 import { Reagent, User, WithdrawalRequest, RequestStatus, ReagentCategory } from '../types';
 import SearchBar from './SearchBar';
@@ -7,28 +9,34 @@ import { RequestWithdrawalModal } from './RequestWithdrawalModal';
 
 interface InventoryProps {
     user: User;
-    // Agora recebemos a lista e a função de adicionar do Pai (App.tsx)
     reagents: Reagent[]; 
     onAddReagent: (reagent: Reagent) => void;
+    // 1. Recebendo a função de atualizar
+    onUpdateReagent: (reagent: Reagent) => void; 
     onDeleteReagent: (id: string) => void; 
     onRequestWithdrawal: (request: WithdrawalRequest) => void;
 }
 
 export const Inventory: React.FC<InventoryProps> = ({ 
     user, 
-    reagents, // <--- Lista que vem do App.tsx (sempre atualizada)
+    reagents, 
     onAddReagent, 
+    onUpdateReagent, // <--- Destruturando a nova função
     onDeleteReagent, 
     onRequestWithdrawal 
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
+    
+    // Controles de Modais
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [reagentToWithdraw, setReagentToWithdraw] = useState<Reagent | null>(null);
+    
+    // 2. Estado para controlar qual reagente está sendo editado
+    const [editingReagent, setEditingReagent] = useState<Reagent | null>(null);
 
     // --- NORMALIZAÇÃO DE DADOS ---
-    // Garante que os dados vindos do App tenham os campos certos (compatibilidade minQuantity vs minStockLevel)
     const normalizedReagents = useMemo(() => {
         return reagents.map((r: any) => ({
             ...r,
@@ -60,19 +68,32 @@ export const Inventory: React.FC<InventoryProps> = ({
     });
 
     const handleAdd = (newReagentData: Omit<Reagent, 'id' | 'createdAt'>) => {
-        // Cria um objeto completo temporário para passar pro Pai
-        // O Pai (App.tsx) vai mandar pro banco e o banco vai corrigir o ID e Data
         const tempReagent: Reagent = {
             ...newReagentData,
             id: 'temp-' + Date.now(),
             createdAt: new Date().toISOString()
         };
-        
-        // Chama a função do App.tsx
         onAddReagent(tempReagent);
         setIsAddModalOpen(false);
     }
+
+    // 3. Função para salvar a edição (chamada pelo Modal)
+    const handleSaveEdit = (formData: any) => {
+        if (!editingReagent) return;
+
+        // Mescla os dados antigos (ID, createAt) com os novos do formulário
+        const updatedReagent = {
+            ...editingReagent,
+            ...formData,
+            // Garante compatibilidade de campos
+            minQuantity: formData.minQuantity || formData.minStockLevel || 10
+        };
+
+        onUpdateReagent(updatedReagent);
+        setEditingReagent(null); // Fecha o modal de edição
+    };
     
+    // --- Handlers de Retirada ---
     const handleOpenWithdrawalModal = (reagent: Reagent) => {
         setReagentToWithdraw(reagent);
     };
@@ -144,11 +165,25 @@ export const Inventory: React.FC<InventoryProps> = ({
                     reagents={filteredReagents} 
                     onDelete={onDeleteReagent} 
                     user={user}
-                    onOpenWithdrawalModal={handleOpenWithdrawalModal} 
+                    onOpenWithdrawalModal={handleOpenWithdrawalModal}
+                    // 4. Passamos a função de editar para a lista (mesmo que ReagentList ainda não use)
+                    onEdit={(reagent: Reagent) => setEditingReagent(reagent)}
                 />
             )}
 
+            {/* Modal de Adição */}
             {isAddModalOpen && <AddReagentModal onClose={() => setIsAddModalOpen(false)} onAdd={handleAdd} />}
+
+            {/* 5. Modal de Edição (Reutilizando o AddReagentModal) */}
+            {editingReagent && (
+                <AddReagentModal 
+                    onClose={() => setEditingReagent(null)} 
+                    onAdd={handleSaveEdit} // Aqui ele vai chamar o saveEdit
+                    initialData={editingReagent} // <--- PRECISAREMOS ADICIONAR ISSO NO MODAL
+                    isEditing={true} // <--- E ISSO TAMBÉM
+                />
+            )}
+
             {reagentToWithdraw && (
                 <RequestWithdrawalModal 
                     reagent={reagentToWithdraw}

@@ -6,7 +6,9 @@ export const ReagentController = {
   // Listar todos
   async index(req: Request, res: Response) {
     try {
-      const reagents = await prisma.reagent.findMany();
+      const reagents = await prisma.reagent.findMany({
+        orderBy: { createdAt: 'desc' } // Ordena para os novos aparecerem primeiro
+      });
       return res.json(reagents);
     } catch (error) {
       console.error(error);
@@ -51,7 +53,48 @@ export const ReagentController = {
     }
   },
 
-  // --- NOVA FUNÇÃO: DELETAR ---
+  // --- NOVA FUNÇÃO: ATUALIZAR (UPDATE) ---
+  async update(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { 
+        name, category, quantity, unit, expirationDate,
+        casNumber, formula, location, description, minQuantity 
+      } = req.body;
+
+      // Objeto de dados para atualizar
+      const dataToUpdate: any = {
+        name,
+        category,
+        casNumber,
+        formula,
+        location,
+        description
+      };
+
+      // Tratamentos especiais de tipos (String -> Number/Date)
+      if (quantity !== undefined) dataToUpdate.quantity = Number(quantity);
+      if (minQuantity !== undefined) dataToUpdate.minQuantity = Number(minQuantity);
+      if (unit) dataToUpdate.unit = unit.toUpperCase();
+      
+      if (expirationDate) {
+        const date = new Date(expirationDate);
+        if (!isNaN(date.getTime())) dataToUpdate.expirationDate = date;
+      }
+
+      const updatedReagent = await prisma.reagent.update({
+        where: { id },
+        data: dataToUpdate
+      });
+
+      return res.json(updatedReagent);
+    } catch (error) {
+      console.error("Erro ao atualizar reagente:", error);
+      return res.status(500).json({ error: 'Erro ao atualizar reagente' });
+    }
+  },
+
+  // --- DELETAR ---
   async delete(req: Request, res: Response) {
     try {
       const { id } = req.params; // Pega o ID da URL (ex: /reagents/123)
