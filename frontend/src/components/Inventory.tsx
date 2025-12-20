@@ -1,197 +1,214 @@
 // frontend/src/components/Inventory.tsx
 
-import React, { useState, useMemo } from 'react';
-import { Reagent, User, WithdrawalRequest, RequestStatus, ReagentCategory } from '../types';
-import SearchBar from './SearchBar';
-import ReagentList from './ReagentList';
+import React, { useState } from 'react';
+import { Reagent, User, ReagentCategory, WithdrawalRequest } from '../types';
+import ReagentTableRow from './ReagentCard'; 
 import AddReagentModal from './AddReagentModal';
-import { RequestWithdrawalModal } from './RequestWithdrawalModal';
+import { RequestWithdrawalModal } from './RequestWithdrawalModal'; 
 
 interface InventoryProps {
-    user: User;
-    reagents: Reagent[]; 
-    onAddReagent: (reagent: Reagent) => void;
-    // 1. Recebendo a função de atualizar
-    onUpdateReagent: (reagent: Reagent) => void; 
-    onDeleteReagent: (id: string) => void; 
-    onRequestWithdrawal: (request: WithdrawalRequest) => void;
+  reagents: Reagent[];
+  user: User;
+  onAddReagent: (reagent: Reagent) => void;
+  onDeleteReagent: (id: string) => void;
+  onUpdateReagent: (reagent: Reagent) => void;
+  onRequestWithdrawal: (request: WithdrawalRequest) => void;
 }
 
 export const Inventory: React.FC<InventoryProps> = ({ 
-    user, 
-    reagents, 
-    onAddReagent, 
-    onUpdateReagent, // <--- Destruturando a nova função
-    onDeleteReagent, 
-    onRequestWithdrawal 
+  reagents, 
+  user, 
+  onAddReagent, 
+  onDeleteReagent, 
+  onUpdateReagent,
+  onRequestWithdrawal 
 }) => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [categoryFilter, setCategoryFilter] = useState('all');
-    const [statusFilter, setStatusFilter] = useState('all');
-    
-    // Controles de Modais
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [reagentToWithdraw, setReagentToWithdraw] = useState<Reagent | null>(null);
-    
-    // 2. Estado para controlar qual reagente está sendo editado
-    const [editingReagent, setEditingReagent] = useState<Reagent | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  
+  // Estado para controlar qual reagente está sendo editado (null = criando novo)
+  const [editingReagent, setEditingReagent] = useState<Reagent | null>(null);
 
-    // --- NORMALIZAÇÃO DE DADOS ---
-    const normalizedReagents = useMemo(() => {
-        return reagents.map((r: any) => ({
-            ...r,
-            minStockLevel: r.minQuantity || r.minStockLevel || 10,
-            casNumber: r.casNumber || '',
-            formula: r.formula || '',
-            location: r.location || '',
-            expirationDate: r.expirationDate || new Date().toISOString()
-        }));
-    }, [reagents]);
+  // Estado para Modal de Retirada
+  const [withdrawalReagent, setWithdrawalReagent] = useState<Reagent | null>(null);
 
-    const getStockStatus = (reagent: Reagent) => {
-        if (reagent.quantity === 0) return 'esgotado';
-        if (reagent.quantity > 0 && reagent.quantity <= (reagent.minStockLevel || 10)) return 'baixo';
-        return 'ok';
+  // --- Lógica de Filtro ---
+  const filteredReagents = reagents.filter(reagent => {
+    const matchesSearch = reagent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (reagent.casNumber && reagent.casNumber.includes(searchTerm)) ||
+                          (reagent.formula && reagent.formula.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesCategory = selectedCategory === 'Todos' || reagent.category === selectedCategory;
+    
+    return matchesSearch && matchesCategory;
+  });
+
+  // --- Handlers ---
+  
+  // Abrir modal para CRIAR
+  const openCreateModal = () => {
+    setEditingReagent(null); 
+    setIsAddModalOpen(true);
+  };
+
+  // Abrir modal para EDITAR
+  const openEditModal = (reagent: Reagent) => {
+    setEditingReagent(reagent);
+    setIsAddModalOpen(true);
+  };
+
+  // Salvar (pode ser criar ou atualizar)
+  const handleSaveReagent = (reagentData: any) => {
+    // Se o modal retornar apenas os dados do form, precisamos mesclar com o ID se for edição
+    const finalData = editingReagent 
+      ? { ...editingReagent, ...reagentData } 
+      : reagentData;
+
+    if (editingReagent) {
+      onUpdateReagent(finalData);
+    } else {
+      onAddReagent(finalData);
     }
+    setIsAddModalOpen(false);
+    setEditingReagent(null);
+  };
 
-    const filteredReagents = normalizedReagents.filter(r => {
-        const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (r.formula && r.formula.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (r.casNumber && r.casNumber.includes(searchTerm));
+  // Handler para Retirada
+  const handleSubmitWithdrawal = (data: { amount: number; reason: string; usageDate: string; requestedBy: string; }) => {
+     if (!withdrawalReagent) return;
 
-        const matchesCategory = categoryFilter === 'all' || r.category === categoryFilter;
+     // Monta o objeto completo de WithdrawalRequest
+     const newRequest: WithdrawalRequest = {
+         id: `w${Date.now()}`,
+         reagentId: withdrawalReagent.id,
+         reagentName: withdrawalReagent.name,
+         amount: Number(data.amount),
+         unit: withdrawalReagent.unit,
+         requestedAt: new Date().toISOString(),
+         status: 'PENDING' as any,
+         reason: data.reason,
+         usageDate: data.usageDate,
+         requestedBy: data.requestedBy,
+     };
+     
+     onRequestWithdrawal(newRequest);
+     setWithdrawalReagent(null);
+  };
 
-        const status = getStockStatus(r);
-        const matchesStatus = statusFilter === 'all' || status === statusFilter;
+  return (
+    <div className="space-y-6">
+      {/* Barra de Ferramentas */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
         
-        return matchesSearch && matchesCategory && matchesStatus;
-    });
+        {/* Busca e Filtro */}
+        <div className="flex flex-1 gap-4 w-full sm:w-auto">
+          <div className="relative flex-1 sm:max-w-xs">
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+              <i className="fa-solid fa-search"></i>
+            </span>
+            <input
+              type="text"
+              placeholder="Buscar por nome, CAS ou fórmula..."
+              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-unilab-blue focus:border-transparent outline-none"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
 
-    const handleAdd = (newReagentData: Omit<Reagent, 'id' | 'createdAt'>) => {
-        const tempReagent: Reagent = {
-            ...newReagentData,
-            id: 'temp-' + Date.now(),
-            createdAt: new Date().toISOString()
-        };
-        onAddReagent(tempReagent);
-        setIsAddModalOpen(false);
-    }
-
-    // 3. Função para salvar a edição (chamada pelo Modal)
-    const handleSaveEdit = (formData: any) => {
-        if (!editingReagent) return;
-
-        // Mescla os dados antigos (ID, createAt) com os novos do formulário
-        const updatedReagent = {
-            ...editingReagent,
-            ...formData,
-            // Garante compatibilidade de campos
-            minQuantity: formData.minQuantity || formData.minStockLevel || 10
-        };
-
-        onUpdateReagent(updatedReagent);
-        setEditingReagent(null); // Fecha o modal de edição
-    };
-    
-    // --- Handlers de Retirada ---
-    const handleOpenWithdrawalModal = (reagent: Reagent) => {
-        setReagentToWithdraw(reagent);
-    };
-
-    const handleCloseWithdrawalModal = () => {
-        setReagentToWithdraw(null);
-    };
-
-    const handleSubmitWithdrawal = (data: { amount: number; reason: string; usageDate: string; requestedBy: string; }) => {
-        if (!reagentToWithdraw) return;
-
-        const newRequest: WithdrawalRequest = {
-            id: `w${Date.now()}`,
-            reagentId: reagentToWithdraw.id,
-            reagentName: reagentToWithdraw.name,
-            amount: data.amount,
-            unit: reagentToWithdraw.unit,
-            requestedAt: new Date().toISOString(),
-            status: RequestStatus.PENDING,
-            reason: data.reason,
-            usageDate: data.usageDate,
-            requestedBy: data.requestedBy,
-        };
-        onRequestWithdrawal(newRequest);
-        handleCloseWithdrawalModal();
-    };
-    
-    return (
-        <div>
-            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto flex-grow">
-                    <SearchBar onSearch={setSearchTerm} />
-                    <select 
-                        aria-label="Filtrar por categoria"
-                        value={categoryFilter}
-                        onChange={e => setCategoryFilter(e.target.value)}
-                        className="block w-full sm:w-48 px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-unilab-blue focus:border-unilab-blue sm:text-sm"
-                    >
-                        <option value="all">Todas as Categorias</option>
-                        {Object.values(ReagentCategory).map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                    </select>
-                    <select 
-                         aria-label="Filtrar por status do estoque"
-                         value={statusFilter}
-                         onChange={e => setStatusFilter(e.target.value)}
-                         className="block w-full sm:w-48 px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-unilab-blue focus:border-unilab-blue sm:text-sm"
-                    >
-                        <option value="all">Todos os Status</option>
-                        <option value="ok">OK</option>
-                        <option value="baixo">Estoque Baixo</option>
-                        <option value="esgotado">Esgotado</option>
-                    </select>
-                </div>
-                {user.role === 'ADMIN' && (
-                    <button onClick={() => setIsAddModalOpen(true)} className="bg-unilab-blue text-white px-4 py-2 rounded-md hover:bg-unilab-green font-semibold flex items-center gap-2 w-full md:w-auto justify-center flex-shrink-0">
-                       <span>+</span> Adicionar Reagente
-                    </button>
-                )}
-            </div>
-
-            {reagents.length === 0 && filteredReagents.length === 0 ? (
-                <div className="text-center py-10">
-                    <p className="text-gray-500">Nenhum reagente encontrado no estoque.</p>
-                </div>
-            ) : (
-                <ReagentList 
-                    reagents={filteredReagents} 
-                    onDelete={onDeleteReagent} 
-                    user={user}
-                    onOpenWithdrawalModal={handleOpenWithdrawalModal}
-                    // 4. Passamos a função de editar para a lista (mesmo que ReagentList ainda não use)
-                    onEdit={(reagent: Reagent) => setEditingReagent(reagent)}
-                />
-            )}
-
-            {/* Modal de Adição */}
-            {isAddModalOpen && <AddReagentModal onClose={() => setIsAddModalOpen(false)} onAdd={handleAdd} />}
-
-            {/* 5. Modal de Edição (Reutilizando o AddReagentModal) */}
-            {editingReagent && (
-                <AddReagentModal 
-                    onClose={() => setEditingReagent(null)} 
-                    onAdd={handleSaveEdit} // Aqui ele vai chamar o saveEdit
-                    initialData={editingReagent} // <--- PRECISAREMOS ADICIONAR ISSO NO MODAL
-                    isEditing={true} // <--- E ISSO TAMBÉM
-                />
-            )}
-
-            {reagentToWithdraw && (
-                <RequestWithdrawalModal 
-                    reagent={reagentToWithdraw}
-                    user={user}
-                    onClose={handleCloseWithdrawalModal}
-                    onSubmit={handleSubmitWithdrawal}
-                />
-            )}
+          <select
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-unilab-blue outline-none bg-white"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+          >
+            <option value="Todos">Todas Categorias</option>
+            {Object.values(ReagentCategory).map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
         </div>
-    );
+
+        {/* 🔒 Botão Adicionar - PROTEGIDO (Só Admin vê) */}
+        {user.role === 'ADMIN' && (
+          <button
+            onClick={openCreateModal}
+            className="flex items-center gap-2 bg-unilab-blue text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium whitespace-nowrap"
+          >
+            <i className="fa-solid fa-plus"></i>
+            <span>Adicionar Reagente</span>
+          </button>
+        )}
+      </div>
+
+      {/* Tabela */}
+      <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reagente</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fórmula</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Local</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estoque</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Validade</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredReagents.length > 0 ? (
+                filteredReagents.map((reagent) => (
+                  <ReagentTableRow 
+                    key={reagent.id} 
+                    reagent={reagent} 
+                    onDelete={onDeleteReagent}
+                    user={user} 
+                    onOpenWithdrawalModal={setWithdrawalReagent}
+                    onEdit={openEditModal} 
+                  />
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8} className="px-6 py-10 text-center text-gray-500">
+                    <div className="flex flex-col items-center gap-2">
+                      <i className="fa-solid fa-flask text-4xl text-gray-300"></i>
+                      <p>Nenhum reagente encontrado com os filtros atuais.</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Modal Híbrido (Adicionar / Editar) */}
+      {isAddModalOpen && (
+        <AddReagentModal
+          // Removido: isOpen={isAddModalOpen} (não existe na interface)
+          onClose={() => {
+            setIsAddModalOpen(false);
+            setEditingReagent(null);
+          }}
+          onAdd={handleSaveReagent} 
+          
+          // Se o AddReagentModal não aceitar essas props, ele vai ignorar (no JS) ou dar erro (no TS).
+          // Se der erro de tipo, significa que precisamos atualizar o AddReagentModal também.
+          initialData={editingReagent} 
+          isEditing={!!editingReagent}
+        />
+      )}
+
+      {/* Modal de Retirada */}
+      {withdrawalReagent && (
+        <RequestWithdrawalModal
+          reagent={withdrawalReagent}
+          user={user}
+          onClose={() => setWithdrawalReagent(null)}
+          onSubmit={handleSubmitWithdrawal}
+        />
+      )}
+    </div>
+  );
 };
