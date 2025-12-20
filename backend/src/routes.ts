@@ -1,11 +1,15 @@
 // backend/src/routes.ts
 import { Router } from 'express';
 import { ReagentController } from './controllers/ReagentController';
+import { AuthController } from './controllers/AuthController';
 
 const router = Router();
 
+// --- ROTA DE LOGIN ---
+router.post('/login', AuthController.authenticate);
+
 router.get('/', (req, res) => {
-  res.send('API do SIRU está online e modularizada! 🚀');
+  res.send('API do SIRU está online! 🚀');
 });
 
 router.get('/reagents', ReagentController.index);

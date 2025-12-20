@@ -225,6 +225,18 @@ npm run dev
 - Acesse http://localhost:3001 (ou a porta indicada) para usar o sistema completo.
 
 ---
+
+## 🔐 Credenciais de Acesso (Padrão)
+
+O banco de dados é populado automaticamente com os seguintes usuários para testes:
+
+| Perfil | E-mail | Senha | Permissões |
+| :--- | :--- | :--- | :--- |
+| **Administrador** | `admin@unilab.br` | `admin123` | Acesso total (Criar/Editar/Excluir/Aprovar) |
+| **Pesquisador** | `silva@unilab.br` | `123456` | Visualizar estoque, Solicitar reagentes |
+
+---
+
 ## Estrutura de Arquivos
 
 A estrutura do projeto está organizada da seguinte forma para facilitar a manutenção e o desenvolvimento:
@@ -336,4 +348,4 @@ tree -I "node_modules|dist|.git|.next"
 obs: dessa forma os arquivos do node_mudules são desconsiderados, pois são muitos e acaba sendo desnecessario.
 ## Licença
 
-Este projeto está licenciado sob a Licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+Este projeto foi desenvolvido para fins acadêmicos no curso de Engenharia de Computação da Unilab.

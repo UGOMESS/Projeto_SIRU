@@ -1,4 +1,4 @@
-// schema.prisma
+// backend/prisma/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -43,18 +43,18 @@ model User {
 }
 
 model Reagent {
-  id             String   @id @default(uuid())
-  name           String
-  casNumber      String?   // CAS number para identificação química
-  category       String    // Ex: Ácido, Solvente, Sal
-  description    String?
-  formula        String?   // Ex: H2SO4, C2H6O
+  id           String    @id @default(uuid())
+  name         String
+  casNumber    String?   // CAS number para identificação química
+  category     String    // Ex: Ácido, Solvente, Sal
+  description  String?
+  formula      String?   // Ex: H2SO4, C2H6O
   
   // Controle de Estoque
-  quantity       Float     // Quantidade atual
-  unit           Unit      // Unidade de medida
-  minQuantity    Float     // Para alerta de estoque baixo
-  location       String?   // Ex: Armário A, Prateleira 2
+  quantity     Float     // Quantidade atual
+  unit         Unit      // Unidade de medida (Agora é um Enum!)
+  minQuantity  Float     // Para alerta de estoque baixo
+  location     String?   // Ex: Armário A, Prateleira 2
   
   // Controle de Validade e Segurança
   expirationDate DateTime
@@ -68,20 +68,20 @@ model Reagent {
 }
 
 model Request {
-  id          String        @id @default(uuid())
-  status      RequestStatus @default(PENDING)
-  reason      String?       // Motivo da retirada (para o TCC/Pesquisa)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id         String        @id @default(uuid())
+  status     RequestStatus @default(PENDING)
+  reason     String?       // Motivo da retirada (para o TCC/Pesquisa)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
   
   // Quem pediu?
-  userId      String
-  user        User          @relation(fields: [userId], references: [id])
+  userId     String
+  user       User          @relation(fields: [userId], references: [id])
   
   // Quem aprovou/recusou? (Opcional, preenchido pelo Admin)
-  reviewedBy  String?       
+  reviewedBy String?       
   
-  items       RequestItem[]
+  items      RequestItem[]
 }
 
 model RequestItem {
@@ -97,15 +97,15 @@ model RequestItem {
 
 // Gestão de Resíduos (Sua funcionalidade de 'Bombonas')
 model WasteContainer {
-  id             String     @id @default(uuid())
-  identifier     String     // Ex: "Bombona 01 - Solventes Halogenados"
-  type           String     // Tipo de resíduo aceito
-  capacity       Float      // Capacidade total (ex: 20L)
-  currentVolume  Float      // Volume atual ocupado
-  location       String?
-  isActive       Boolean    @default(true) // Se está em uso ou cheia/fechada
+  id            String   @id @default(uuid())
+  identifier    String   // Ex: "Bombona 01 - Solventes Halogenados"
+  type          String   // Tipo de resíduo aceito
+  capacity      Float    // Capacidade total (ex: 20L)
+  currentVolume Float    // Volume atual ocupado
+  location      String?
+  isActive      Boolean  @default(true) // Se está em uso ou cheia/fechada
   
-  logs           WasteLog[]
+  logs          WasteLog[]
 }
 
 model WasteLog {

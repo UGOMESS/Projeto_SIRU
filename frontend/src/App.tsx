@@ -9,24 +9,11 @@ import { WasteManagement } from './components/WasteManagement';
 import { SafetyAssistant } from './components/SafetyAssistant';
 import { Withdrawals } from './components/Withdrawals';
 import { AccessibilityDock } from './components/AccessibilityDock';
+// Importando o componente de Login
+import { Login } from './components/Login'; 
 import { User, Reagent, WithdrawalRequest, WasteLog, RequestStatus } from './types';
 import { MOCK_WITHDRAWALS, MOCK_WASTE_LOGS, MOCK_NEWS } from './constants';
-// Importamos a nova função updateReagent
 import { api, updateReagent } from './services/api'; 
-
-const MOCK_ADMIN: User = {
-  id: 'u1',
-  name: 'Admin Principal',
-  email: 'admin@unilab.br',
-  role: 'ADMIN'
-};
-
-const MOCK_RESEARCHER: User = {
-  id: 'u2',
-  name: 'Pesquisador Silva',
-  email: 'silva@unilab.br',
-  role: 'RESEARCHER'
-};
 
 interface ToastProps {
   msg: string;
@@ -34,19 +21,77 @@ interface ToastProps {
 }
 
 export const App: React.FC = () => {
+  // --- ESTADO DE AUTENTICAÇÃO ---
+  // Começa null (deslogado). Se tiver algo no localStorage, o useEffect preenche depois.
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  
   const [currentView, setCurrentView] = useState('dashboard');
-  const [currentUser, setCurrentUser] = useState<User>(MOCK_ADMIN);
   const [toast, setToast] = useState<ToastProps | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [fontSize, setFontSize] = useState(16);
 
-  // --- ESTADO GLOBAL ---
+  // Estados de Dados
   const [reagents, setReagents] = useState<Reagent[]>([]); 
-  
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>(MOCK_WITHDRAWALS);
   const [wasteLogs, setWasteLogs] = useState<WasteLog[]>(MOCK_WASTE_LOGS);
 
+  // --- 1. VERIFICAR LOGIN AO INICIAR ---
+  useEffect(() => {
+    const storedUser = localStorage.getItem('siru_user');
+    const storedToken = localStorage.getItem('siru_token');
+
+    if (storedUser && storedToken) {
+      // Reconecta o usuário e configura o Token no Axios
+      setCurrentUser(JSON.parse(storedUser));
+      api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+    }
+  }, []);
+
+  // --- 2. BUSCAR DADOS (SÓ SE ESTIVER LOGADO) ---
+  useEffect(() => {
+    if (!currentUser) return; // Não busca nada se não estiver logado
+
+    const fetchReagents = async () => {
+      try {
+        const response = await api.get('/reagents');
+        setReagents(response.data);
+      } catch (error) {
+        console.error("Erro ao conectar com a API:", error);
+        // Se der erro 401 (não autorizado), poderíamos deslogar o usuário aqui
+        if ((error as any).response?.status === 401) {
+             handleLogout();
+        } else {
+             showToast("Erro ao carregar dados.", "error");
+        }
+      }
+    };
+
+    fetchReagents();
+  }, [currentUser]); // Executa sempre que o usuário logar
+
+  // --- HANDLERS DE AUTENTICAÇÃO ---
+  const handleLoginSuccess = (user: User, token: string) => {
+    // Salva no navegador para não perder ao dar F5
+    localStorage.setItem('siru_user', JSON.stringify(user));
+    localStorage.setItem('siru_token', token);
+    
+    // Configura o token para as próximas requisições
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    
+    setCurrentUser(user);
+    showToast(`Bem-vindo, ${user.name}!`);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('siru_user');
+    localStorage.removeItem('siru_token');
+    api.defaults.headers.common['Authorization'] = '';
+    setCurrentUser(null);
+    setCurrentView('dashboard');
+  };
+
+  // --- Outros Handlers (UI) ---
   const handleFontSizeChange = (increase: boolean) => {
     setFontSize(prev => {
         const newSize = increase ? prev + 1 : prev - 1;
@@ -59,43 +104,10 @@ export const App: React.FC = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // --- 1. BUSCAR DADOS DO BACKEND AO INICIAR ---
-  useEffect(() => {
-    const fetchReagents = async () => {
-      try {
-        const response = await api.get('/reagents');
-        setReagents(response.data);
-        console.log("Conexão bem-sucedida! Dados carregados:", response.data);
-      } catch (error) {
-        console.error("Erro ao conectar com a API:", error);
-        showToast("Erro ao carregar dados do servidor.", "error");
-      }
-    };
-
-    fetchReagents();
-  }, []);
-
-  const toggleUserRole = () => {
-    setCurrentUser(prev => {
-      const newUser = prev.role === 'ADMIN' ? MOCK_RESEARCHER : MOCK_ADMIN;
-      showToast(`Perfil alternado para: ${newUser.role === 'ADMIN' ? 'Administrador' : 'Pesquisador'}`, 'info');
-      
-      if (newUser.role === 'RESEARCHER' && (currentView === 'waste' || currentView === 'withdrawals')) {
-        setCurrentView('dashboard');
-      }
-      return newUser;
-    });
-  };
-
-  // --- Handlers ---
-
-  // --- 2. SALVAR NO BACKEND (POST) ---
   const handleAddReagent = async (newReagent: Reagent) => {
     try {
       const { id, ...reagentData } = newReagent;
-      
       const response = await api.post('/reagents', reagentData);
-      
       setReagents(prev => [response.data, ...prev]);
       showToast('Reagente salvo no Banco de Dados!');
     } catch (error) {
@@ -104,18 +116,13 @@ export const App: React.FC = () => {
     }
   };
 
-  // --- 3. EXCLUIR DO BACKEND (DELETE) ---
   const handleDeleteReagent = async (id: string) => {
     if (!window.confirm("Tem certeza que deseja excluir este reagente permanentemente?")) {
         return;
     }
-
     try {
         await api.delete(`/reagents/${id}`);
-        
-        // Atualiza a lista removendo o item
         setReagents(prevReagents => prevReagents.filter(item => item.id !== id));
-        
         showToast('Reagente excluído com sucesso.');
     } catch (error) {
         console.error("Erro ao excluir:", error);
@@ -123,17 +130,12 @@ export const App: React.FC = () => {
     }
   };
 
-  // --- 4. ATUALIZAR NO BACKEND (UPDATE) ---
   const handleUpdateReagent = async (updatedReagent: Reagent) => {
     try {
-      // Chama a API passando o ID e o objeto completo
       const savedReagent = await updateReagent(updatedReagent.id, updatedReagent);
-
-      // Atualiza a lista local trocando o antigo pelo novo (baseado no ID)
       setReagents(prev => prev.map(item => 
         item.id === savedReagent.id ? savedReagent : item
       ));
-
       showToast('Reagente atualizado com sucesso!');
     } catch (error) {
       console.error("Erro ao atualizar:", error);
@@ -141,18 +143,18 @@ export const App: React.FC = () => {
     }
   };
 
+  // Funções Mockadas (ainda não conectadas ao backend real de Pedidos)
   const handleCreateWithdrawalRequest = (newRequest: WithdrawalRequest) => {
     setWithdrawals(prev => [newRequest, ...prev]);
     showToast('Solicitação enviada para aprovação!', 'success');
   };
-
   const handleAddWasteLog = (newLog: WasteLog) => {
     setWasteLogs(prev => [newLog, ...prev]);
     showToast('Descarte registrado corretamente.');
   };
-
   const handleWithdrawalAction = (id: string, newStatus: RequestStatus) => {
-    const request = withdrawals.find(w => w.id === id);
+     // Lógica visual mantida igual ao anterior para não quebrar
+     const request = withdrawals.find(w => w.id === id);
     if (!request) return;
 
     if (newStatus === RequestStatus.APPROVED) {
@@ -165,62 +167,35 @@ export const App: React.FC = () => {
             showToast(`Erro: Estoque insuficiente para "${request.reagentName}".`, 'error');
             return;
         }
-
         setReagents(prev => prev.map(r => 
             r.id === request.reagentId 
             ? { ...r, quantity: Number((r.quantity - request.amount).toFixed(2)) } 
             : r
         ));
-        
         showToast('Solicitação aprovada e estoque atualizado!');
     } else {
         showToast('Solicitação recusada.');
     }
-
     setWithdrawals(prev => prev.map(req => 
       req.id === id ? { ...req, status: newStatus } : req
     ));
   };
 
   const renderView = () => {
+    // Se user for null (não deveria chegar aqui se a lógica do return principal funcionar)
+    if (!currentUser) return null;
+
     switch (currentView) {
       case 'dashboard':
-        return (
-          <Dashboard 
-            user={currentUser} 
-            reagents={reagents}
-            wasteLogs={wasteLogs}
-            onNavigate={setCurrentView}
-            news={MOCK_NEWS}
-          />
-        );
+        return <Dashboard user={currentUser} reagents={reagents} wasteLogs={wasteLogs} onNavigate={setCurrentView} news={MOCK_NEWS} />;
       case 'inventory':
-        return (
-          <Inventory 
-            user={currentUser} 
-            reagents={reagents} 
-            onAddReagent={handleAddReagent} 
-            onDeleteReagent={handleDeleteReagent}
-            onUpdateReagent={handleUpdateReagent} // <--- Passando a função nova (vai dar erro temporário no TS)
-            onRequestWithdrawal={handleCreateWithdrawalRequest}
-          />
-        );
+        return <Inventory user={currentUser} reagents={reagents} onAddReagent={handleAddReagent} onDeleteReagent={handleDeleteReagent} onUpdateReagent={handleUpdateReagent} onRequestWithdrawal={handleCreateWithdrawalRequest} />;
       case 'withdrawals':
         if (currentUser.role !== 'ADMIN') return <Dashboard user={currentUser} reagents={reagents} wasteLogs={wasteLogs} onNavigate={setCurrentView} news={MOCK_NEWS}/>;
-        return (
-          <Withdrawals 
-            requests={withdrawals}
-            onAction={handleWithdrawalAction}
-          />
-        );
+        return <Withdrawals requests={withdrawals} onAction={handleWithdrawalAction} />;
       case 'waste':
         if (currentUser.role !== 'ADMIN') return <Dashboard user={currentUser} reagents={reagents} wasteLogs={wasteLogs} onNavigate={setCurrentView} news={MOCK_NEWS}/>;
-        return (
-          <WasteManagement 
-            logs={wasteLogs}
-            onAddLog={handleAddWasteLog}
-          />
-        );
+        return <WasteManagement logs={wasteLogs} onAddLog={handleAddWasteLog} />;
       case 'assistant':
         return <SafetyAssistant />;
       default:
@@ -239,17 +214,30 @@ export const App: React.FC = () => {
     }
   };
 
+  // --- RENDERIZAÇÃO CONDICIONAL ---
+
+  // 1. Se NÃO estiver logado, mostra APENAS o Login
+  if (!currentUser) {
+    return (
+      <div className={`min-h-screen font-sans text-slate-800 ${isHighContrast ? 'high-contrast' : ''}`} style={{ fontSize: `${fontSize}px` }}>
+        <Login onLoginSuccess={handleLoginSuccess} />
+      </div>
+    );
+  }
+
+  // 2. Se ESTIVER logado, mostra o App completo
   return (
     <div className={`min-h-screen bg-gray-50 font-sans text-slate-800 ${isHighContrast ? 'high-contrast' : ''}`} style={{ fontSize: `${fontSize}px` }}>
         <Header isSidebarCollapsed={isSidebarCollapsed} />
       
       <div className="flex pt-[120px]">
         <AccessibilityDock onFontSizeChange={handleFontSizeChange} onContrastToggle={() => setIsHighContrast(!isHighContrast)} />
+        
         <Sidebar 
           activeView={currentView} 
           setView={setCurrentView} 
           user={currentUser}
-          onToggleRole={toggleUserRole}
+          onToggleRole={() => {}} // Removemos a troca fake de papel
           isCollapsed={isSidebarCollapsed}
           toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           reagents={reagents}
@@ -280,20 +268,18 @@ export const App: React.FC = () => {
             </div>
             
             <div className="flex items-center space-x-4">
+               {/* Botão de Logout */}
+               <button 
+                  onClick={handleLogout}
+                  className="px-3 py-1 text-sm text-red-600 border border-red-200 rounded hover:bg-red-50 transition-colors flex items-center gap-2"
+                  title="Sair do Sistema"
+               >
+                 <i className="fa-solid fa-right-from-bracket"></i>
+                 Sair
+               </button>
+
               <button className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
                 <i className="fa-solid fa-bell text-xl"></i>
-                {(() => {
-                  if (currentUser.role !== 'ADMIN') return null;
-                  const pendingCount = withdrawals.filter(w => w.status === RequestStatus.PENDING).length;
-                  if (pendingCount > 0) {
-                    return (
-                      <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent-500 text-xs font-bold text-white ring-2 ring-gray-50">
-                        {pendingCount}
-                      </span>
-                    );
-                  }
-                  return null;
-                })()}
               </button>
             </div>
           </header>
