@@ -1,5 +1,3 @@
-// frontend/src/App.tsx
-
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -9,10 +7,9 @@ import { WasteManagement } from './components/WasteManagement';
 import { SafetyAssistant } from './components/SafetyAssistant';
 import { Withdrawals } from './components/Withdrawals';
 import { AccessibilityDock } from './components/AccessibilityDock';
-// Importando o componente de Login
 import { Login } from './components/Login'; 
 import { User, Reagent, WithdrawalRequest, WasteLog, RequestStatus } from './types';
-import { MOCK_WITHDRAWALS, MOCK_WASTE_LOGS, MOCK_NEWS } from './constants';
+import { MOCK_WASTE_LOGS, MOCK_NEWS } from './constants';
 import { api, updateReagent } from './services/api'; 
 
 interface ToastProps {
@@ -21,64 +18,92 @@ interface ToastProps {
 }
 
 export const App: React.FC = () => {
-  // --- ESTADO DE AUTENTICAÇÃO ---
-  // Começa null (deslogado). Se tiver algo no localStorage, o useEffect preenche depois.
+  // --- Estados Principais ---
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
-  const [currentView, setCurrentView] = useState('dashboard');
+  // Persistência da navegação (Evita voltar ao Dashboard no F5)
+  const [currentView, setCurrentViewState] = useState(localStorage.getItem('siru_view') || 'dashboard');
+  
+  const setCurrentView = (view: string) => {
+    localStorage.setItem('siru_view', view);
+    setCurrentViewState(view);
+  };
+
+  // Estados de UI e Dados
   const [toast, setToast] = useState<ToastProps | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [fontSize, setFontSize] = useState(16);
 
-  // Estados de Dados
   const [reagents, setReagents] = useState<Reagent[]>([]); 
-  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>(MOCK_WITHDRAWALS);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]); 
   const [wasteLogs, setWasteLogs] = useState<WasteLog[]>(MOCK_WASTE_LOGS);
 
-  // --- 1. VERIFICAR LOGIN AO INICIAR ---
+  // --- Efeitos (Side Effects) ---
+
+  // 1. Recuperar Sessão
   useEffect(() => {
     const storedUser = localStorage.getItem('siru_user');
     const storedToken = localStorage.getItem('siru_token');
 
     if (storedUser && storedToken) {
-      // Reconecta o usuário e configura o Token no Axios
       setCurrentUser(JSON.parse(storedUser));
       api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
     }
   }, []);
 
-  // --- 2. BUSCAR DADOS (SÓ SE ESTIVER LOGADO) ---
+  // 2. Carregar Dados Iniciais
   useEffect(() => {
-    if (!currentUser) return; // Não busca nada se não estiver logado
+    if (!currentUser) return; 
 
-    const fetchReagents = async () => {
+    const fetchData = async () => {
       try {
-        const response = await api.get('/reagents');
-        setReagents(response.data);
+        const [resReagents, resRequests] = await Promise.all([
+          api.get('/reagents'),
+          api.get('/requests')
+        ]);
+
+        setReagents(resReagents.data);
+
+        // Mapeamento e proteção de dados dos pedidos
+        const formattedRequests = resRequests.data.map((req: any) => {
+           const hasItems = req.items && Array.isArray(req.items) && req.items.length > 0;
+           const firstItem = hasItems ? req.items[0] : null;
+           const reagent = firstItem ? firstItem.reagent : null;
+
+           return {
+             id: req.id,
+             reagentId: reagent?.id || 'unknown',
+             reagentName: reagent?.name || 'Reagente Removido',
+             amount: firstItem?.quantity || 0,
+             unit: reagent?.unit || 'UNID',
+             requestedBy: req.user?.name || 'Desconhecido',
+             requestedAt: req.createdAt,
+             // Normalização do Status para garantir compatibilidade visual
+             status: req.status ? req.status.toUpperCase() : 'PENDING',
+             reason: req.reason || '',
+             usageDate: req.usageDate 
+           };
+        });
+
+        setWithdrawals(formattedRequests);
+
       } catch (error) {
-        console.error("Erro ao conectar com a API:", error);
-        // Se der erro 401 (não autorizado), poderíamos deslogar o usuário aqui
+        console.error("Erro ao carregar dados:", error);
         if ((error as any).response?.status === 401) {
              handleLogout();
-        } else {
-             showToast("Erro ao carregar dados.", "error");
         }
       }
     };
 
-    fetchReagents();
-  }, [currentUser]); // Executa sempre que o usuário logar
+    fetchData();
+  }, [currentUser]); 
 
-  // --- HANDLERS DE AUTENTICAÇÃO ---
+  // --- Handlers de Autenticação ---
   const handleLoginSuccess = (user: User, token: string) => {
-    // Salva no navegador para não perder ao dar F5
     localStorage.setItem('siru_user', JSON.stringify(user));
     localStorage.setItem('siru_token', token);
-    
-    // Configura o token para as próximas requisições
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    
     setCurrentUser(user);
     showToast(`Bem-vindo, ${user.name}!`);
   };
@@ -86,12 +111,18 @@ export const App: React.FC = () => {
   const handleLogout = () => {
     localStorage.removeItem('siru_user');
     localStorage.removeItem('siru_token');
+    localStorage.removeItem('siru_view');
     api.defaults.headers.common['Authorization'] = '';
     setCurrentUser(null);
     setCurrentView('dashboard');
   };
 
-  // --- Outros Handlers (UI) ---
+  // --- Handlers de UI ---
+  const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
   const handleFontSizeChange = (increase: boolean) => {
     setFontSize(prev => {
         const newSize = increase ? prev + 1 : prev - 1;
@@ -99,124 +130,132 @@ export const App: React.FC = () => {
     });
   };
 
-  const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
+  // --- Handlers de Reagentes ---
   const handleAddReagent = async (newReagent: Reagent) => {
     try {
       const { id, ...reagentData } = newReagent;
       const response = await api.post('/reagents', reagentData);
       setReagents(prev => [response.data, ...prev]);
-      showToast('Reagente salvo no Banco de Dados!');
+      showToast('Reagente salvo com sucesso!');
     } catch (error) {
-      console.error("Erro ao salvar:", error);
-      showToast('Erro ao salvar no banco de dados.', 'error');
+      showToast('Erro ao salvar reagente.', 'error');
     }
   };
 
   const handleDeleteReagent = async (id: string) => {
-    if (!window.confirm("Tem certeza que deseja excluir este reagente permanentemente?")) {
-        return;
-    }
+    if (!window.confirm("Confirmar exclusão permanente?")) return;
     try {
         await api.delete(`/reagents/${id}`);
-        setReagents(prevReagents => prevReagents.filter(item => item.id !== id));
-        showToast('Reagente excluído com sucesso.');
+        setReagents(prev => prev.filter(item => item.id !== id));
+        showToast('Reagente excluído.');
     } catch (error) {
-        console.error("Erro ao excluir:", error);
-        showToast('Erro ao excluir do banco de dados.', 'error');
+        showToast('Erro ao excluir reagente.', 'error');
     }
   };
 
   const handleUpdateReagent = async (updatedReagent: Reagent) => {
     try {
-      const savedReagent = await updateReagent(updatedReagent.id, updatedReagent);
-      setReagents(prev => prev.map(item => 
-        item.id === savedReagent.id ? savedReagent : item
-      ));
-      showToast('Reagente atualizado com sucesso!');
+      const saved = await updateReagent(updatedReagent.id, updatedReagent);
+      setReagents(prev => prev.map(item => item.id === saved.id ? saved : item));
+      showToast('Reagente atualizado!');
     } catch (error) {
-      console.error("Erro ao atualizar:", error);
-      showToast('Erro ao atualizar no banco de dados.', 'error');
+      showToast('Erro ao atualizar reagente.', 'error');
     }
   };
 
-  // Funções Mockadas (ainda não conectadas ao backend real de Pedidos)
-  const handleCreateWithdrawalRequest = (newRequest: WithdrawalRequest) => {
-    setWithdrawals(prev => [newRequest, ...prev]);
-    showToast('Solicitação enviada para aprovação!', 'success');
+  // --- Handlers de Pedidos e Retiradas ---
+  const handleCreateWithdrawalRequest = async (newRequest: WithdrawalRequest) => {
+    try {
+      const payload = {
+        reagentId: newRequest.reagentId,
+        amount: Number(newRequest.amount),
+        reason: newRequest.reason,
+        usageDate: newRequest.usageDate
+      };
+
+      const response = await api.post('/requests', payload);
+
+      const createdRequest: WithdrawalRequest = {
+        ...newRequest,
+        id: response.data.id,
+        status: RequestStatus.PENDING,
+        requestedAt: new Date().toISOString(),
+        requestedBy: currentUser?.name || 'Eu'
+      };
+
+      setWithdrawals(prev => [createdRequest, ...prev]);
+      showToast('Solicitação enviada para aprovação!', 'success');
+    } catch (error) {
+      showToast('Erro ao enviar solicitação.', 'error');
+    }
   };
+
+  const handleWithdrawalAction = async (id: string, newStatus: RequestStatus) => {
+    try {
+      // Blindagem contra status inválido
+      const statusPayload = String(newStatus).toUpperCase();
+
+      await api.patch(`/requests/${id}/status`, { status: statusPayload });
+
+      setWithdrawals(prev => prev.map(req => 
+        req.id === id ? { ...req, status: statusPayload as RequestStatus } : req
+      ));
+
+      if (statusPayload === 'APPROVED') {
+        const request = withdrawals.find(w => w.id === id);
+        if (request) {
+            setReagents(prev => prev.map(r => 
+                r.id === request.reagentId 
+                ? { ...r, quantity: Number((r.quantity - request.amount).toFixed(2)) } 
+                : r
+            ));
+        }
+        showToast('Solicitação aprovada. Estoque atualizado.', 'success');
+      } else {
+        showToast('Solicitação recusada.', 'info');
+      }
+
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.response?.data?.error || 'Erro ao processar solicitação.';
+      showToast(msg, 'error');
+    }
+  };
+
+  // --- Gestão de Resíduos (Mock) ---
   const handleAddWasteLog = (newLog: WasteLog) => {
     setWasteLogs(prev => [newLog, ...prev]);
-    showToast('Descarte registrado corretamente.');
-  };
-  const handleWithdrawalAction = (id: string, newStatus: RequestStatus) => {
-     // Lógica visual mantida igual ao anterior para não quebrar
-     const request = withdrawals.find(w => w.id === id);
-    if (!request) return;
-
-    if (newStatus === RequestStatus.APPROVED) {
-        const reagent = reagents.find(r => r.id === request.reagentId);
-        if (!reagent) {
-            showToast(`Erro: Reagente "${request.reagentName}" não encontrado.`, 'error');
-            return;
-        }
-        if (reagent.quantity < request.amount) {
-            showToast(`Erro: Estoque insuficiente para "${request.reagentName}".`, 'error');
-            return;
-        }
-        setReagents(prev => prev.map(r => 
-            r.id === request.reagentId 
-            ? { ...r, quantity: Number((r.quantity - request.amount).toFixed(2)) } 
-            : r
-        ));
-        showToast('Solicitação aprovada e estoque atualizado!');
-    } else {
-        showToast('Solicitação recusada.');
-    }
-    setWithdrawals(prev => prev.map(req => 
-      req.id === id ? { ...req, status: newStatus } : req
-    ));
+    showToast('Descarte registrado.');
   };
 
+  // --- Renderização ---
   const renderView = () => {
-    // Se user for null (não deveria chegar aqui se a lógica do return principal funcionar)
     if (!currentUser) return null;
-
     switch (currentView) {
-      case 'dashboard':
-        return <Dashboard user={currentUser} reagents={reagents} wasteLogs={wasteLogs} onNavigate={setCurrentView} news={MOCK_NEWS} />;
-      case 'inventory':
-        return <Inventory user={currentUser} reagents={reagents} onAddReagent={handleAddReagent} onDeleteReagent={handleDeleteReagent} onUpdateReagent={handleUpdateReagent} onRequestWithdrawal={handleCreateWithdrawalRequest} />;
-      case 'withdrawals':
+      case 'dashboard': return <Dashboard user={currentUser} reagents={reagents} wasteLogs={wasteLogs} onNavigate={setCurrentView} news={MOCK_NEWS} />;
+      case 'inventory': return <Inventory user={currentUser} reagents={reagents} onAddReagent={handleAddReagent} onDeleteReagent={handleDeleteReagent} onUpdateReagent={handleUpdateReagent} onRequestWithdrawal={handleCreateWithdrawalRequest} />;
+      case 'withdrawals': 
         if (currentUser.role !== 'ADMIN') return <Dashboard user={currentUser} reagents={reagents} wasteLogs={wasteLogs} onNavigate={setCurrentView} news={MOCK_NEWS}/>;
         return <Withdrawals requests={withdrawals} onAction={handleWithdrawalAction} />;
-      case 'waste':
+      case 'waste': 
         if (currentUser.role !== 'ADMIN') return <Dashboard user={currentUser} reagents={reagents} wasteLogs={wasteLogs} onNavigate={setCurrentView} news={MOCK_NEWS}/>;
         return <WasteManagement logs={wasteLogs} onAddLog={handleAddWasteLog} />;
-      case 'assistant':
-        return <SafetyAssistant />;
-      default:
-        return <Dashboard user={currentUser} reagents={reagents} wasteLogs={wasteLogs} onNavigate={setCurrentView} news={MOCK_NEWS}/>;
+      case 'assistant': return <SafetyAssistant />;
+      default: return <Dashboard user={currentUser} reagents={reagents} wasteLogs={wasteLogs} onNavigate={setCurrentView} news={MOCK_NEWS}/>;
     }
   };
 
   const getTitle = (view: string) => {
-    switch (view) {
-      case 'dashboard': return 'Painel de Controle';
-      case 'inventory': return 'Estoque de Reagentes';
-      case 'withdrawals': return 'Aprovação de Retiradas';
-      case 'waste': return 'Gestão de Resíduos';
-      case 'assistant': return 'Assistente de Segurança';
-      default: return 'SIRU';
-    }
+    const titles: {[key: string]: string} = {
+      'dashboard': 'Painel de Controle',
+      'inventory': 'Estoque de Reagentes',
+      'withdrawals': 'Aprovação de Retiradas',
+      'waste': 'Gestão de Resíduos',
+      'assistant': 'Assistente de Segurança'
+    };
+    return titles[view] || 'SIRU';
   };
 
-  // --- RENDERIZAÇÃO CONDICIONAL ---
-
-  // 1. Se NÃO estiver logado, mostra APENAS o Login
   if (!currentUser) {
     return (
       <div className={`min-h-screen font-sans text-slate-800 ${isHighContrast ? 'high-contrast' : ''}`} style={{ fontSize: `${fontSize}px` }}>
@@ -225,7 +264,6 @@ export const App: React.FC = () => {
     );
   }
 
-  // 2. Se ESTIVER logado, mostra o App completo
   return (
     <div className={`min-h-screen bg-gray-50 font-sans text-slate-800 ${isHighContrast ? 'high-contrast' : ''}`} style={{ fontSize: `${fontSize}px` }}>
         <Header isSidebarCollapsed={isSidebarCollapsed} />
@@ -237,7 +275,7 @@ export const App: React.FC = () => {
           activeView={currentView} 
           setView={setCurrentView} 
           user={currentUser}
-          onToggleRole={() => {}} // Removemos a troca fake de papel
+          onToggleRole={() => {}} 
           isCollapsed={isSidebarCollapsed}
           toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           reagents={reagents}
@@ -259,25 +297,14 @@ export const App: React.FC = () => {
 
           <header className="mb-8 flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 capitalize">
-                {getTitle(currentView)}
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Sistema Integrado de Reagentes da Unilab
-              </p>
+              <h1 className="text-2xl font-bold text-gray-900 capitalize">{getTitle(currentView)}</h1>
+              <p className="text-sm text-gray-500 mt-1">Sistema Integrado de Reagentes da Unilab</p>
             </div>
             
             <div className="flex items-center space-x-4">
-               {/* Botão de Logout */}
-               <button 
-                  onClick={handleLogout}
-                  className="px-3 py-1 text-sm text-red-600 border border-red-200 rounded hover:bg-red-50 transition-colors flex items-center gap-2"
-                  title="Sair do Sistema"
-               >
-                 <i className="fa-solid fa-right-from-bracket"></i>
-                 Sair
+               <button onClick={handleLogout} className="px-3 py-1 text-sm text-red-600 border border-red-200 rounded hover:bg-red-50 transition-colors flex items-center gap-2">
+                 <i className="fa-solid fa-right-from-bracket"></i> Sair
                </button>
-
               <button className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
                 <i className="fa-solid fa-bell text-xl"></i>
               </button>
@@ -287,10 +314,6 @@ export const App: React.FC = () => {
           {renderView()}
         </main>
       </div>
-      
-      <footer id="footer" className="hidden">
-         Informações do rodapé.
-      </footer>
     </div>
   );
 };

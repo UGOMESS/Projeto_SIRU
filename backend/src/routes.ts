@@ -2,7 +2,8 @@
 import { Router } from 'express';
 import { ReagentController } from './controllers/ReagentController';
 import { AuthController } from './controllers/AuthController';
-// 1. Importando o Segurança (Middleware)
+// Importando o Controlador de Pedidos
+import { RequestController } from './controllers/RequestController'; 
 import { authMiddleware } from './middlewares/authMiddleware';
 
 const router = Router();
@@ -16,14 +17,20 @@ router.get('/', (req, res) => {
 });
 
 // --- Rotas de Reagentes ---
-
-// GET: Leitura (Por enquanto deixamos pública, mas você pode bloquear se quiser)
 router.get('/reagents', ReagentController.index);
-
-// 2. Aplicando o authMiddleware nas rotas perigosas
-// O fluxo agora é: Chega Requisição -> authMiddleware verifica -> Se OK, vai pro Controller
 router.post('/reagents', authMiddleware, ReagentController.create);
 router.put('/reagents/:id', authMiddleware, ReagentController.update);
 router.delete('/reagents/:id', authMiddleware, ReagentController.delete);
+
+// --- ROTAS DE PEDIDOS (Requests) ---
+// Criar pedido (Qualquer um logado)
+router.post('/requests', authMiddleware, RequestController.create);
+
+// Listar pedidos (Admin vê tudo, Pesquisador vê os seus)
+router.get('/requests', authMiddleware, RequestController.index);
+
+// NOVO: Alterar Status (Aprovar/Recusar) ✅
+// Isso permite que o Admin aprove o pedido e baixe o estoque
+router.patch('/requests/:id/status', authMiddleware, RequestController.updateStatus);
 
 export { router };

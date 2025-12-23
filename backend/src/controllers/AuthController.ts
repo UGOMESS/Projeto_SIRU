@@ -5,7 +5,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 // Em produção, isso deve estar no arquivo .env
-const JWT_SECRET = process.env.JWT_SECRET || 'unilab-siru-secret-key-2025';
+// ATENÇÃO: Essa chave deve ser IGUAL à do authMiddleware
+export const JWT_SECRET = process.env.JWT_SECRET || 'unilab-siru-secret-key-2025';
 
 export const AuthController = {
   async authenticate(req: Request, res: Response) {
