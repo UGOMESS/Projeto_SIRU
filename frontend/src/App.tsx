@@ -1,15 +1,17 @@
+// frontend/src/App.tsx
+
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Inventory } from './components/Inventory';
-import { WasteManagement } from './components/WasteManagement';
+import { WasteManagement } from './components/WasteManagement'; // Componente atualizado
 import { SafetyAssistant } from './components/SafetyAssistant';
 import { Withdrawals } from './components/Withdrawals';
 import { AccessibilityDock } from './components/AccessibilityDock';
 import { Login } from './components/Login'; 
-import { User, Reagent, WithdrawalRequest, WasteLog, RequestStatus } from './types';
-import { MOCK_WASTE_LOGS, MOCK_NEWS } from './constants';
+import { User, Reagent, WithdrawalRequest, RequestStatus } from './types';
+import { MOCK_WASTE_LOGS, MOCK_NEWS } from './constants'; // Mantido apenas para o Dashboard por enquanto
 import { api, updateReagent } from './services/api'; 
 
 interface ToastProps {
@@ -21,7 +23,7 @@ export const App: React.FC = () => {
   // --- Estados Principais ---
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
-  // Persistência da navegação (Evita voltar ao Dashboard no F5)
+  // Persistência da navegação
   const [currentView, setCurrentViewState] = useState(localStorage.getItem('siru_view') || 'dashboard');
   
   const setCurrentView = (view: string) => {
@@ -37,7 +39,8 @@ export const App: React.FC = () => {
 
   const [reagents, setReagents] = useState<Reagent[]>([]); 
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]); 
-  const [wasteLogs, setWasteLogs] = useState<WasteLog[]>(MOCK_WASTE_LOGS);
+  
+  // Nota: Removemos o estado 'wasteLogs' daqui, pois o WasteManagement agora busca da API sozinho.
 
   // --- Efeitos (Side Effects) ---
 
@@ -52,7 +55,7 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // 2. Carregar Dados Iniciais
+  // 2. Carregar Dados Iniciais (Reagentes e Pedidos)
   useEffect(() => {
     if (!currentUser) return; 
 
@@ -65,7 +68,7 @@ export const App: React.FC = () => {
 
         setReagents(resReagents.data);
 
-        // Mapeamento e proteção de dados dos pedidos
+        // Mapeamento de pedidos
         const formattedRequests = resRequests.data.map((req: any) => {
            const hasItems = req.items && Array.isArray(req.items) && req.items.length > 0;
            const firstItem = hasItems ? req.items[0] : null;
@@ -79,7 +82,6 @@ export const App: React.FC = () => {
              unit: reagent?.unit || 'UNID',
              requestedBy: req.user?.name || 'Desconhecido',
              requestedAt: req.createdAt,
-             // Normalização do Status para garantir compatibilidade visual
              status: req.status ? req.status.toUpperCase() : 'PENDING',
              reason: req.reason || '',
              usageDate: req.usageDate 
@@ -163,7 +165,7 @@ export const App: React.FC = () => {
     }
   };
 
-  // --- Handlers de Pedidos e Retiradas ---
+  // --- Handlers de Pedidos ---
   const handleCreateWithdrawalRequest = async (newRequest: WithdrawalRequest) => {
     try {
       const payload = {
@@ -192,7 +194,6 @@ export const App: React.FC = () => {
 
   const handleWithdrawalAction = async (id: string, newStatus: RequestStatus) => {
     try {
-      // Blindagem contra status inválido
       const statusPayload = String(newStatus).toUpperCase();
 
       await api.patch(`/requests/${id}/status`, { status: statusPayload });
@@ -222,26 +223,30 @@ export const App: React.FC = () => {
     }
   };
 
-  // --- Gestão de Resíduos (Mock) ---
-  const handleAddWasteLog = (newLog: WasteLog) => {
-    setWasteLogs(prev => [newLog, ...prev]);
-    showToast('Descarte registrado.');
-  };
-
   // --- Renderização ---
   const renderView = () => {
     if (!currentUser) return null;
     switch (currentView) {
-      case 'dashboard': return <Dashboard user={currentUser} reagents={reagents} wasteLogs={wasteLogs} onNavigate={setCurrentView} news={MOCK_NEWS} />;
-      case 'inventory': return <Inventory user={currentUser} reagents={reagents} onAddReagent={handleAddReagent} onDeleteReagent={handleDeleteReagent} onUpdateReagent={handleUpdateReagent} onRequestWithdrawal={handleCreateWithdrawalRequest} />;
+      case 'dashboard': 
+        // Dashboard ainda usa Mocks por enquanto, será o próximo a ser atualizado
+        return <Dashboard user={currentUser} reagents={reagents} wasteLogs={MOCK_WASTE_LOGS} onNavigate={setCurrentView} news={MOCK_NEWS} />;
+      
+      case 'inventory': 
+        return <Inventory user={currentUser} reagents={reagents} onAddReagent={handleAddReagent} onDeleteReagent={handleDeleteReagent} onUpdateReagent={handleUpdateReagent} onRequestWithdrawal={handleCreateWithdrawalRequest} />;
+      
       case 'withdrawals': 
-        if (currentUser.role !== 'ADMIN') return <Dashboard user={currentUser} reagents={reagents} wasteLogs={wasteLogs} onNavigate={setCurrentView} news={MOCK_NEWS}/>;
+        if (currentUser.role !== 'ADMIN') return <Dashboard user={currentUser} reagents={reagents} wasteLogs={MOCK_WASTE_LOGS} onNavigate={setCurrentView} news={MOCK_NEWS}/>;
         return <Withdrawals requests={withdrawals} onAction={handleWithdrawalAction} />;
+      
+      // --- CORREÇÃO AQUI ---
       case 'waste': 
-        if (currentUser.role !== 'ADMIN') return <Dashboard user={currentUser} reagents={reagents} wasteLogs={wasteLogs} onNavigate={setCurrentView} news={MOCK_NEWS}/>;
-        return <WasteManagement logs={wasteLogs} onAddLog={handleAddWasteLog} />;
+        // 1. Removemos a restrição de ADMIN (Pesquisador também descarta)
+        // 2. Passamos apenas 'user', pois o componente agora busca seus dados na API
+        return <WasteManagement user={currentUser} />;
+      
       case 'assistant': return <SafetyAssistant />;
-      default: return <Dashboard user={currentUser} reagents={reagents} wasteLogs={wasteLogs} onNavigate={setCurrentView} news={MOCK_NEWS}/>;
+      
+      default: return <Dashboard user={currentUser} reagents={reagents} wasteLogs={MOCK_WASTE_LOGS} onNavigate={setCurrentView} news={MOCK_NEWS}/>;
     }
   };
 

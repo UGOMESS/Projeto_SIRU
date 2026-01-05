@@ -33,7 +33,7 @@ model User {
   id        String   @id @default(uuid())
   name      String
   email     String   @unique
-  password  String   // Lembre-se de salvar criptografado (bcrypt)
+  password  String   // Salvar criptografado (bcrypt)
   role      Role     @default(RESEARCHER)
   createdAt DateTime @default(now())
 
@@ -45,15 +45,15 @@ model User {
 model Reagent {
   id           String    @id @default(uuid())
   name         String
-  casNumber    String?   // CAS number para identificação química
+  casNumber    String?   // Identificação química
   category     String    // Ex: Ácido, Solvente, Sal
   description  String?
   formula      String?   // Ex: H2SO4, C2H6O
   
   // Controle de Estoque
   quantity     Float     // Quantidade atual
-  unit         Unit      // Unidade de medida (Agora é um Enum!)
-  minQuantity  Float     // Para alerta de estoque baixo
+  unit         Unit      // Unidade de medida
+  minQuantity  Float     // Alerta de estoque baixo (antigo minStockLevel)
   location     String?   // Ex: Armário A, Prateleira 2
   
   // Controle de Validade e Segurança
@@ -70,7 +70,7 @@ model Reagent {
 model Request {
   id         String        @id @default(uuid())
   status     RequestStatus @default(PENDING)
-  reason     String?       // Motivo da retirada (para o TCC/Pesquisa)
+  reason     String?       // Motivo da retirada
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
   
@@ -95,7 +95,7 @@ model RequestItem {
   reagent   Reagent @relation(fields: [reagentId], references: [id])
 }
 
-// Gestão de Resíduos (Sua funcionalidade de 'Bombonas')
+// Gestão de Resíduos (Funcionalidade de 'Bombonas')
 model WasteContainer {
   id            String   @id @default(uuid())
   identifier    String   // Ex: "Bombona 01 - Solventes Halogenados"

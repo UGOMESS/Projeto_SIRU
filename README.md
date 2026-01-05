@@ -183,8 +183,10 @@ npm install
 ## 🚀 Guia Diário: Como Iniciar o Sistema
 
 **Passo 1: Ligar o Banco de Dados**
+- Abrir o Docker desktop e lige o Banco de Dados 
 - Abra o VS Code conectado ao WSL.
-- No terminal, ligue o Banco de Dados com o seguinte comando:
+- Acesse a pasta do projeto SIRU
+- No terminal, confirme se o Banco de Dados esta ligado com o seguinte comando:
 ```
 docker-compose up -d db
 ````
@@ -262,6 +264,33 @@ A estrutura do projeto está organizada da seguinte forma para facilitar a manut
 
 ## Guia Rápido de Git e GitHub
 
+
+###  Crianr uma Branch (ramificação) em seu Projeto local.
+
+```bash
+# cria uma nova branch 
+git checkout -b minha-nova-funcionalidade
+# Fazer todas as alterações e atualizações nescessarias.
+
+# Adiciona todos os arquivos que você alterou
+git add .
+
+#Pega tudo o que estava na Área de Preparação e cria um "Pacote Fechado"
+git commit -m "mensagem"
+
+#Volta para a main principal
+git checkout main
+
+#Mescla a branch ramificada com a branch principal(main)
+git merge nome_da_branch_ramificada
+
+#Envia todas as modificações para o GitHub
+git push origin main
+
+# Excluir branch que usamos de rascunho ( boa pratica de programação)
+git branch -d nome_da_branch_ramificada
+```
+---
 Se você não tem familiaridade com Git e GitHub, este guia rápido o ajudará a começar.
 
 ### 1. Baixando (Clonando) o Projeto
@@ -279,7 +308,7 @@ Isso criará uma pasta chamada `Projeto_SIRU`.
 cd Projeto_SIRU/frontend
 ```
 
-### 2. Enviando Suas Alterações (Contribuindo)
+### 2. Enviando Suas Alterações (Contribuindo quando você não é o dono do projeto)
 
 Para propor mudanças no projeto (como corrigir um bug ou adicionar uma nova funcionalidade), o fluxo de trabalho ideal é o seguinte:
 
@@ -321,6 +350,7 @@ Para propor mudanças no projeto (como corrigir um bug ou adicionar uma nova fun
 
   # Grava as alterações com uma mensagem descritiva
   git commit -m "Adiciona nova funcionalidade de exportação de dados"
+
   ```
   *Escreva uma mensagem de commit clara e objetiva.*
 
