@@ -9,6 +9,8 @@ import { WasteController } from './controllers/WasteController';
 // NOVO: Importando Controlador do Dashboard
 import { DashboardController } from './controllers/DashboardController';
 
+import { NewsController } from './controllers/NewsController';
+
 import { authMiddleware } from './middlewares/authMiddleware';
 
 const router = Router();
@@ -24,6 +26,9 @@ router.get('/', (req, res) => {
 // --- ROTA DO DASHBOARD (NOVO) ---
 // Retorna os contadores para os gráficos da tela inicial
 router.get('/dashboard/stats', authMiddleware, DashboardController.getStats);
+
+// Rota de Notícias (Scraping da Unilab)
+router.get('/news', authMiddleware, NewsController.getNews);
 
 // --- Rotas de Reagentes ---
 router.get('/reagents', ReagentController.index);

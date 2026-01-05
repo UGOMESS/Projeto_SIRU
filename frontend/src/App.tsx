@@ -1,17 +1,15 @@
 // frontend/src/App.tsx
-
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Inventory } from './components/Inventory';
-import { WasteManagement } from './components/WasteManagement'; // Componente atualizado
+import { WasteManagement } from './components/WasteManagement';
 import { SafetyAssistant } from './components/SafetyAssistant';
 import { Withdrawals } from './components/Withdrawals';
 import { AccessibilityDock } from './components/AccessibilityDock';
 import { Login } from './components/Login'; 
 import { User, Reagent, WithdrawalRequest, RequestStatus } from './types';
-import { MOCK_WASTE_LOGS, MOCK_NEWS } from './constants'; // Mantido apenas para o Dashboard por enquanto
 import { api, updateReagent } from './services/api'; 
 
 interface ToastProps {
@@ -39,8 +37,6 @@ export const App: React.FC = () => {
 
   const [reagents, setReagents] = useState<Reagent[]>([]); 
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]); 
-  
-  // Nota: Removemos o estado 'wasteLogs' daqui, pois o WasteManagement agora busca da API sozinho.
 
   // --- Efeitos (Side Effects) ---
 
@@ -228,25 +224,28 @@ export const App: React.FC = () => {
     if (!currentUser) return null;
     switch (currentView) {
       case 'dashboard': 
-        // Dashboard ainda usa Mocks por enquanto, será o próximo a ser atualizado
-        return <Dashboard user={currentUser} reagents={reagents} wasteLogs={MOCK_WASTE_LOGS} onNavigate={setCurrentView} news={MOCK_NEWS} />;
+        // ATUALIZADO: Removemos props desnecessários
+        return <Dashboard user={currentUser} onNavigate={setCurrentView} />;
       
       case 'inventory': 
         return <Inventory user={currentUser} reagents={reagents} onAddReagent={handleAddReagent} onDeleteReagent={handleDeleteReagent} onUpdateReagent={handleUpdateReagent} onRequestWithdrawal={handleCreateWithdrawalRequest} />;
       
       case 'withdrawals': 
-        if (currentUser.role !== 'ADMIN') return <Dashboard user={currentUser} reagents={reagents} wasteLogs={MOCK_WASTE_LOGS} onNavigate={setCurrentView} news={MOCK_NEWS}/>;
+        if (currentUser.role !== 'ADMIN') {
+             // ATUALIZADO: Removemos props desnecessários do fallback
+             return <Dashboard user={currentUser} onNavigate={setCurrentView} />;
+        }
         return <Withdrawals requests={withdrawals} onAction={handleWithdrawalAction} />;
       
-      // --- CORREÇÃO AQUI ---
       case 'waste': 
-        // 1. Removemos a restrição de ADMIN (Pesquisador também descarta)
-        // 2. Passamos apenas 'user', pois o componente agora busca seus dados na API
+        // Correto: WasteManagement busca seus próprios dados
         return <WasteManagement user={currentUser} />;
       
       case 'assistant': return <SafetyAssistant />;
       
-      default: return <Dashboard user={currentUser} reagents={reagents} wasteLogs={MOCK_WASTE_LOGS} onNavigate={setCurrentView} news={MOCK_NEWS}/>;
+      default: 
+        // ATUALIZADO: Removemos props desnecessários
+        return <Dashboard user={currentUser} onNavigate={setCurrentView} />;
     }
   };
 

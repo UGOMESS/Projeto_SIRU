@@ -1,14 +1,15 @@
+// frontend/src/components/Dashboard.tsx
 import React, { useEffect, useState } from 'react';
-import { User, UniversityNews } from '../types'; // Removemos Reagent e WasteLog daqui
+import { User, UniversityNews } from '../types';
 import { api } from '../services/api';
 
 interface DashboardProps {
   user: User;
-  news: UniversityNews[];
+  // news: UniversityNews[]; // REMOVIDO: Agora o dashboard busca suas próprias notícias
   onNavigate: (view: string) => void;
 }
 
-// Tipagem do que vem da API
+// Tipagem do que vem da API de Stats
 interface DashboardStats {
   totalReagents: number;
   lowStockReagents: number;
@@ -23,46 +24,57 @@ const QuickActionButton: React.FC<{ icon: string, label: string, onClick: () => 
   </button>
 );
 
-export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate, news }) => {
-  // Estado para guardar os números que vêm do banco
+export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
+  // Estado para estatísticas
   const [stats, setStats] = useState<DashboardStats>({
     totalReagents: 0,
     lowStockReagents: 0,
     pendingRequests: 0,
     totalWaste: 0
   });
+
+  // Estado para Notícias (Array vazio inicialmente)
+  const [news, setNews] = useState<UniversityNews[]>([]);
+  
   const [loading, setLoading] = useState(true);
 
-  // Busca os dados assim que a tela abre
+  // Busca TUDO assim que a tela abre
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchData = async () => {
       try {
-        const response = await api.get('/dashboard/stats');
-        setStats(response.data);
+        // Executa as duas requisições em paralelo
+        const [statsRes, newsRes] = await Promise.all([
+          api.get('/dashboard/stats'),
+          api.get('/news')
+        ]);
+
+        setStats(statsRes.data);
+        setNews(newsRes.data);
+
       } catch (error) {
-        console.error("Erro ao carregar estatísticas:", error);
+        console.error("Erro ao carregar dados do dashboard:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchStats();
+    fetchData();
   }, []);
 
-  const getCategoryTagColor = (category: UniversityNews['category']) => {
-    switch (category) {
-      case 'Edital': return 'bg-blue-100 text-blue-800';
-      case 'Evento': return 'bg-green-100 text-green-800';
-      case 'Aviso': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const getCategoryTagColor = (category: string) => {
+    // Adaptação simples caso a categoria venha diferente do esperado
+    const cat = category || 'Geral';
+    if (cat.includes('Edital')) return 'bg-blue-100 text-blue-800';
+    if (cat.includes('Evento')) return 'bg-green-100 text-green-800';
+    if (cat.includes('Aviso')) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-gray-100 text-gray-800';
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-xl font-semibold text-gray-700">Olá, {user.name}! Bem-vindo(a) ao SIRU.</h2>
       
-      {/* STATS CARDS - Agora conectados ao Backend */}
+      {/* STATS CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         
         {/* Card 1: Total de Reagentes */}
@@ -91,7 +103,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate, news }) 
           </div>
         </div>
 
-        {/* Card 3: Pedidos Pendentes (Substituí "Controlados" para alinhar com a API e fluxo operacional) */}
+        {/* Card 3: Pedidos Pendentes */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex items-center gap-4 transition hover:shadow-md">
           <div className="bg-orange-500/10 text-orange-600 p-3 rounded-full">
             <i className="fa-solid fa-clock text-2xl"></i>
@@ -137,11 +149,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate, news }) 
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <i className="fa-solid fa-graduation-cap text-blue-600"></i>
-              Conexão Unilab
+              Conexão Unilab (Ao Vivo)
           </h3>
           <ul className="space-y-3">
-              {news.map(item => (
-                  <li key={item.id} className="flex items-center justify-between p-3 rounded-md hover:bg-gray-50 border-b border-gray-50 last:border-0">
+              {loading && <p className="text-gray-500 text-sm p-4">Carregando notícias da Unilab...</p>}
+              
+              {!loading && news.length === 0 && (
+                 <p className="text-gray-400 text-sm p-4">Nenhuma notícia encontrada no momento.</p>
+              )}
+
+              {news.map((item, index) => (
+                  <li key={index} className="flex items-center justify-between p-3 rounded-md hover:bg-gray-50 border-b border-gray-50 last:border-0">
                       <div>
                           <a href={item.link} target="_blank" rel="noopener noreferrer" className="font-medium text-gray-700 hover:text-blue-600 transition-colors">{item.title}</a>
                           <p className="text-xs text-gray-400 mt-1">{item.date}</p>
