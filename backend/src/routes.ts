@@ -4,8 +4,11 @@ import { ReagentController } from './controllers/ReagentController';
 import { AuthController } from './controllers/AuthController';
 // Importando o Controlador de Pedidos
 import { RequestController } from './controllers/RequestController'; 
-// NOVO: Importando Controlador de Resíduos
+// Importando Controlador de Resíduos
 import { WasteController } from './controllers/WasteController';
+// NOVO: Importando Controlador do Dashboard
+import { DashboardController } from './controllers/DashboardController';
+
 import { authMiddleware } from './middlewares/authMiddleware';
 
 const router = Router();
@@ -17,6 +20,10 @@ router.post('/login', AuthController.authenticate);
 router.get('/', (req, res) => {
   res.send('API do SIRU está online! 🚀');
 });
+
+// --- ROTA DO DASHBOARD (NOVO) ---
+// Retorna os contadores para os gráficos da tela inicial
+router.get('/dashboard/stats', authMiddleware, DashboardController.getStats);
 
 // --- Rotas de Reagentes ---
 router.get('/reagents', ReagentController.index);
@@ -34,7 +41,7 @@ router.get('/requests', authMiddleware, RequestController.index);
 // Alterar Status (Aprovar/Recusar)
 router.patch('/requests/:id/status', authMiddleware, RequestController.updateStatus);
 
-// --- ROTAS DE GESTÃO DE RESÍDUOS (NOVO) ---
+// --- ROTAS DE GESTÃO DE RESÍDUOS ---
 // 1. Bombonas (Containers)
 router.get('/waste/containers', authMiddleware, WasteController.getContainers);
 router.post('/waste/containers', authMiddleware, WasteController.createContainer);
