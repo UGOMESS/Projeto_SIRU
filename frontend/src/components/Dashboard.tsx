@@ -1,175 +1,274 @@
 // frontend/src/components/Dashboard.tsx
+
 import React, { useEffect, useState } from 'react';
-import { User, UniversityNews } from '../types';
 import { api } from '../services/api';
+import { toast } from 'react-toastify';
+// Importando os novos componentes do Recharts para o gráfico de Rosca
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface DashboardProps {
-  user: User;
-  // news: UniversityNews[]; // REMOVIDO: Agora o dashboard busca suas próprias notícias
+  user: any;
   onNavigate: (view: string) => void;
 }
 
-// Tipagem do que vem da API de Stats
-interface DashboardStats {
-  totalReagents: number;
-  lowStockReagents: number;
-  pendingRequests: number;
-  totalWaste: number;
-}
-
-const QuickActionButton: React.FC<{ icon: string, label: string, onClick: () => void, color: string }> = ({ icon, label, onClick, color }) => (
-  <button onClick={onClick} className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg hover:shadow-lg transition-shadow border ${color} bg-white group`}>
-    <i className={`fa-solid ${icon} text-3xl group-hover:scale-110 transition-transform`}></i>
-    <span className="font-semibold text-sm text-center text-gray-700">{label}</span>
-  </button>
-);
-
 export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
-  // Estado para estatísticas
-  const [stats, setStats] = useState<DashboardStats>({
-    totalReagents: 0,
-    lowStockReagents: 0,
-    pendingRequests: 0,
-    totalWaste: 0
-  });
-
-  // Estado para Notícias (Array vazio inicialmente)
-  const [news, setNews] = useState<UniversityNews[]>([]);
-  
+  const [stats, setStats] = useState<any>(null);
+  const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Busca TUDO assim que a tela abre
+  // Cores modernas para o gráfico (Paleta Material/Flat)
+  const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Executa as duas requisições em paralelo
-        const [statsRes, newsRes] = await Promise.all([
-          api.get('/dashboard/stats'),
-          api.get('/news')
-        ]);
-
-        setStats(statsRes.data);
-        setNews(newsRes.data);
-
-      } catch (error) {
-        console.error("Erro ao carregar dados do dashboard:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, []);
 
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [statsRes, newsRes] = await Promise.all([
+          api.get('/dashboard/stats'),
+          api.get('/news')
+      ]);
+      setStats(statsRes.data);
+      setNews(newsRes.data || []);
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao carregar dados do painel.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="flex flex-col justify-center items-center h-96 gap-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <p className="text-gray-500 animate-pulse font-medium">Sincronizando laboratório...</p>
+    </div>
+  );
+
+  // Dados para o gráfico (Mockados ou Reais)
+  // IMPORTANTE: Quando você atualizar o backend no próximo passo, isso virá de stats.categoryStats
+  const categoryData = stats?.categoryStats || [
+    { name: 'Ácidos', qtd: 12 }, 
+    { name: 'Bases', qtd: 8 },
+    { name: 'Sais', qtd: 25 },
+    { name: 'Solventes', qtd: 15 },
+    { name: 'Outros', qtd: 10 },
+  ];
+
+  // Helper para cor da tag de notícia
   const getCategoryTagColor = (category: string) => {
-    // Adaptação simples caso a categoria venha diferente do esperado
     const cat = category || 'Geral';
-    if (cat.includes('Edital')) return 'bg-blue-100 text-blue-800';
-    if (cat.includes('Evento')) return 'bg-green-100 text-green-800';
-    if (cat.includes('Aviso')) return 'bg-yellow-100 text-yellow-800';
-    return 'bg-gray-100 text-gray-800';
+    if (cat.includes('Edital')) return 'bg-blue-100 text-blue-700 border-blue-200';
+    if (cat.includes('Evento')) return 'bg-green-100 text-green-700 border-green-200';
+    if (cat.includes('Aviso')) return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+    return 'bg-gray-100 text-gray-700 border-gray-200';
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <h2 className="text-xl font-semibold text-gray-700">Olá, {user.name}! Bem-vindo(a) ao SIRU.</h2>
+    <div className="space-y-8 animate-fade-in pb-10">
       
-      {/* STATS CARDS */}
+      {/* SEÇÃO 1: Banner de Boas-vindas (Mantido, pois ficou ótimo) */}
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
+          <div className="relative z-10">
+              <h2 className="text-3xl font-bold mb-2">Olá, {user.name.split(' ')[0]}!</h2>
+              <p className="text-indigo-100 mb-6 max-w-2xl text-lg">
+                  Visão geral do SIRU. 
+                  {stats?.pendingRequests > 0 ? (
+                      <span> Há <strong className="text-white bg-white/20 px-2 py-0.5 rounded border border-white/30">{stats.pendingRequests} pedidos</strong> aguardando sua aprovação.</span>
+                  ) : (
+                      <span> Todas as operações estão em dia.</span>
+                  )}
+              </p>
+              
+              <div className="flex flex-wrap gap-3">
+                  <button onClick={() => onNavigate('inventory')} className="bg-white text-indigo-600 px-5 py-2.5 rounded-lg font-bold shadow-lg hover:bg-indigo-50 transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
+                      <i className="fa-solid fa-flask"></i> Acessar Estoque
+                  </button>
+                  {user.role === 'ADMIN' && (
+                      <button onClick={() => onNavigate('waste')} className="bg-indigo-800/50 backdrop-blur-sm text-white px-5 py-2.5 rounded-lg font-bold shadow-lg hover:bg-indigo-800/70 transition-all border border-indigo-400/30 flex items-center gap-2">
+                          <i className="fa-solid fa-recycle"></i> Gestão de Resíduos
+                      </button>
+                  )}
+              </div>
+          </div>
+          <i className="fa-solid fa-atom absolute -bottom-10 -right-10 text-[180px] opacity-10 rotate-12 text-white"></i>
+      </div>
+
+      {/* SEÇÃO 2: Cards de KPIs (Mantido layout grid 4 colunas) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        
-        {/* Card 1: Total de Reagentes */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex items-center gap-4 transition hover:shadow-md">
-          <div className="bg-blue-500/10 text-blue-600 p-3 rounded-full">
-            <i className="fa-solid fa-vials text-2xl"></i>
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
+              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-xl">
+                  <i className="fa-solid fa-vials"></i>
+              </div>
+              <div>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Itens</p>
+                  <h3 className="text-2xl font-bold text-gray-800">{stats?.totalReagents || 0}</h3>
+              </div>
           </div>
-          <div>
-            <h3 className="font-semibold text-gray-500 text-sm">Total de Reagentes</h3>
-            <p className="text-3xl font-bold text-gray-800">
-              {loading ? '...' : stats.totalReagents}
-            </p>
-          </div>
-        </div>
 
-        {/* Card 2: Estoque Baixo */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex items-center gap-4 transition hover:shadow-md">
-           <div className="bg-yellow-400/10 text-yellow-600 p-3 rounded-full">
-            <i className="fa-solid fa-triangle-exclamation text-2xl"></i>
+          <div onClick={() => onNavigate('inventory')} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer group">
+              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-600 text-xl group-hover:bg-red-100 transition-colors">
+                  <i className="fa-solid fa-triangle-exclamation"></i>
+              </div>
+              <div>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider group-hover:text-red-500">Estoque Crítico</p>
+                  <h3 className="text-2xl font-bold text-gray-800">{stats?.lowStockReagents || 0}</h3>
+              </div>
           </div>
-          <div>
-            <h3 className="font-semibold text-gray-500 text-sm">Estoque Baixo</h3>
-            <p className={`text-3xl font-bold ${stats.lowStockReagents > 0 ? 'text-yellow-600' : 'text-gray-800'}`}>
-              {loading ? '...' : stats.lowStockReagents}
-            </p>
-          </div>
-        </div>
 
-        {/* Card 3: Pedidos Pendentes */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex items-center gap-4 transition hover:shadow-md">
-          <div className="bg-orange-500/10 text-orange-600 p-3 rounded-full">
-            <i className="fa-solid fa-clock text-2xl"></i>
+          <div onClick={() => onNavigate('withdrawals')} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer group">
+              <div className="w-12 h-12 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-600 text-xl group-hover:bg-yellow-100 transition-colors">
+                  <i className="fa-solid fa-clock"></i>
+              </div>
+              <div>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider group-hover:text-yellow-600">Pendências</p>
+                  <h3 className="text-2xl font-bold text-gray-800">{stats?.pendingRequests || 0}</h3>
+              </div>
           </div>
-          <div>
-            <h3 className="font-semibold text-gray-500 text-sm">Pedidos Pendentes</h3>
-            <p className={`text-3xl font-bold ${stats.pendingRequests > 0 ? 'text-orange-600' : 'text-gray-800'}`}>
-              {loading ? '...' : stats.pendingRequests}
-            </p>
-          </div>
-        </div>
 
-         {/* Card 4: Resíduos */}
-         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex items-center gap-4 transition hover:shadow-md">
-          <div className="bg-green-500/10 text-green-600 p-3 rounded-full">
-            <i className="fa-solid fa-recycle text-2xl"></i>
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-500 text-sm">Resíduos (L)</h3>
-            <p className="text-3xl font-bold text-gray-800">
-              {loading ? '...' : stats.totalWaste}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* QUICK ACTIONS */}
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="font-semibold text-gray-800 mb-4">Ações Rápidas</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {user.role === 'ADMIN' && (
-                <QuickActionButton icon="fa-plus" label="Novo Reagente" onClick={() => onNavigate('inventory')} color="border-blue-200 text-blue-600"/>
-              )}
-              <QuickActionButton icon="fa-dolly" label="Solicitar Retirada" onClick={() => onNavigate('inventory')} color="border-purple-200 text-purple-600"/>
-              {user.role === 'ADMIN' && (
-                <QuickActionButton icon="fa-trash-can" label="Gestão de Resíduos" onClick={() => onNavigate('waste')} color="border-green-200 text-green-600"/>
-              )}
-              {/* BOTÃO DO ASSISTENTE IA REMOVIDO DAQUI */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
+              <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center text-green-600 text-xl">
+                  <i className="fa-solid fa-dumpster"></i>
+              </div>
+              <div>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Resíduos (L)</p>
+                  <h3 className="text-2xl font-bold text-gray-800">{stats?.totalWaste || 0}</h3>
+              </div>
           </div>
       </div>
 
-      {/* NEWS FEED */}
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <i className="fa-solid fa-graduation-cap text-blue-600"></i>
-              Conexão Unilab (Ao Vivo)
-          </h3>
-          <ul className="space-y-3">
-              {loading && <p className="text-gray-500 text-sm p-4">Carregando notícias da Unilab...</p>}
+      {/* SEÇÃO 3: Gráficos e Alertas (Layout 2/3 + 1/3) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Gráfico de Rosca (Donut) */}
+          <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <div className="flex justify-between items-center mb-6">
+                  <h3 className="font-bold text-gray-800 text-lg">Composição do Estoque</h3>
+                  <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded">Por categoria</span>
+              </div>
+              
+              <div className="h-72 w-full flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                          <Pie
+                              data={categoryData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={80} // Faz o buraco do Donut
+                              outerRadius={110}
+                              paddingAngle={5}
+                              dataKey="qtd"
+                              stroke="none" // Remove borda branca padrão
+                          >
+                              {categoryData.map((entry: any, index: number) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                          </Pie>
+                          <Tooltip 
+                              contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)'}}
+                              itemStyle={{color: '#374151', fontWeight: 600}}
+                          />
+                          <Legend 
+                              verticalAlign="middle" 
+                              align="right" 
+                              layout="vertical" 
+                              iconType="circle"
+                              iconSize={10}
+                              wrapperStyle={{paddingLeft: '20px', color: '#6b7280'}}
+                          />
+                      </PieChart>
+                  </ResponsiveContainer>
+              </div>
+          </div>
+
+          {/* Lista de Alertas (Ocupa o espaço deixado pelas Notícias) */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col">
+              <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <i className="fa-solid fa-bell text-gray-400"></i> Atenção Requerida
+              </h3>
+              
+              <div className="flex-1 overflow-y-auto pr-1 space-y-3 max-h-[300px] scrollbar-thin">
+                  {stats?.lowStockReagents > 0 ? (
+                      <div className="p-4 bg-red-50 rounded-lg border border-red-100">
+                          <div className="flex items-center gap-2 mb-1">
+                              <i className="fa-solid fa-circle-exclamation text-red-500"></i>
+                              <h4 className="font-bold text-red-800 text-sm">Reposição Necessária</h4>
+                          </div>
+                          <p className="text-xs text-red-600 leading-relaxed">
+                              Existem <strong>{stats.lowStockReagents} reagentes</strong> abaixo do nível mínimo de segurança.
+                          </p>
+                          <button onClick={() => onNavigate('inventory')} className="mt-3 text-xs font-bold text-red-700 hover:text-red-900 hover:underline">
+                              Ver lista de reposição →
+                          </button>
+                      </div>
+                  ) : (
+                      <div className="p-4 bg-green-50 rounded-lg border border-green-100 text-center py-8">
+                          <i className="fa-solid fa-check-circle text-green-500 text-3xl mb-2"></i>
+                          <p className="text-sm font-bold text-green-800">Estoque Saudável</p>
+                          <p className="text-xs text-green-600">Nenhum item em falta.</p>
+                      </div>
+                  )}
+
+                  {/* Alerta de Pedidos (Se houver) */}
+                  {stats?.pendingRequests > 0 && (
+                      <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-100">
+                          <div className="flex items-center gap-2 mb-1">
+                              <i className="fa-solid fa-hourglass-half text-yellow-600"></i>
+                              <h4 className="font-bold text-yellow-800 text-sm">Aprovações Pendentes</h4>
+                          </div>
+                          <p className="text-xs text-yellow-700">
+                              {stats.pendingRequests} solicitações de retirada aguardam sua liberação.
+                          </p>
+                          <button onClick={() => onNavigate('withdrawals')} className="mt-3 text-xs font-bold text-yellow-800 hover:underline">
+                              Resolver agora →
+                          </button>
+                      </div>
+                  )}
+              </div>
+          </div>
+      </div>
+
+      {/* SEÇÃO 4: Notícias Unilab (Formato Horizontal) */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                  <i className="fa-solid fa-graduation-cap text-indigo-600"></i> Conexão Unilab
+              </h3>
+              <div className="flex gap-2">
+                  <span className="text-xs text-gray-400 flex items-center gap-1"><i className="fa-solid fa-arrows-left-right"></i> Deslize para ver mais</span>
+              </div>
+          </div>
+
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+              {loading && <p className="text-gray-400 text-sm p-4 w-full text-center">Carregando feed...</p>}
               
               {!loading && news.length === 0 && (
-                 <p className="text-gray-400 text-sm p-4">Nenhuma notícia encontrada no momento.</p>
+                  <div className="w-full text-center p-8 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                      <p className="text-gray-400 text-sm">Nenhuma notícia recente encontrada.</p>
+                  </div>
               )}
 
               {news.map((item, index) => (
-                  <li key={index} className="flex items-center justify-between p-3 rounded-md hover:bg-gray-50 border-b border-gray-50 last:border-0">
-                      <div>
-                          <a href={item.link} target="_blank" rel="noopener noreferrer" className="font-medium text-gray-700 hover:text-blue-600 transition-colors">{item.title}</a>
-                          <p className="text-xs text-gray-400 mt-1">{item.date}</p>
+                  <div key={index} className="min-w-[280px] w-[280px] bg-gray-50 p-4 rounded-xl border border-gray-100 hover:border-indigo-200 hover:shadow-md transition-all flex flex-col h-full group">
+                      <div className="flex justify-between items-start mb-2">
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${getCategoryTagColor(item.category)}`}>
+                              {item.category || 'GERAL'}
+                          </span>
+                          <span className="text-[10px] text-gray-400">{item.date}</span>
                       </div>
-                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${getCategoryTagColor(item.category)}`}>
-                          {item.category}
-                      </span>
-                  </li>
+                      <a href={item.link} target="_blank" rel="noopener noreferrer" className="font-bold text-gray-800 text-sm mb-2 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                          {item.title}
+                      </a>
+                      <div className="mt-auto pt-2">
+                          <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 font-medium hover:underline flex items-center gap-1">
+                              Ler matéria <i className="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                          </a>
+                      </div>
+                  </div>
               ))}
-          </ul>
+          </div>
       </div>
 
     </div>

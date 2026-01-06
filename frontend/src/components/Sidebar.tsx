@@ -1,4 +1,5 @@
 // frontend/src/components/Sidebar.tsx
+
 import React, { useState } from 'react';
 import { User, Reagent } from '../types';
 
@@ -51,7 +52,7 @@ const AlertsDrawer: React.FC<{
                 {/* Recently Added Section */}
                 <div className="mt-6">
                     <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                        <i className="fa-solid fa-sparkles text-primary-500"></i>
+                        <i className="fa-solid fa-sparkles text-blue-500"></i>
                         Adicionados Recentemente
                     </h3>
                     {recentlyAddedReagents.length > 0 ? (
@@ -82,10 +83,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, user, onT
 
   const recentlyAddedReagents = [...reagents]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5); // Get latest 5
+    .slice(0, 5);
 
   const navItems = [
-    { id: 'dashboard', name: 'Dashboard', icon: 'fa-home' },
+    // AQUI ESTÁ A MUDANÇA: 'Dashboard' -> 'Visão Geral'
+    { id: 'dashboard', name: 'Visão Geral', icon: 'fa-chart-pie' }, 
     { id: 'inventory', name: 'Estoque', icon: 'fa-flask' },
     { id: 'withdrawals', name: 'Retiradas', icon: 'fa-dolly', adminOnly: true },
     { id: 'waste', name: 'Resíduos', icon: 'fa-recycle', adminOnly: true },
@@ -100,11 +102,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, user, onT
   return (
     <>
     <aside className={`fixed top-0 left-0 h-full bg-unilab-blue text-white transition-all duration-300 z-30 flex flex-col ${isCollapsed ? 'w-20' : 'w-72'}`}>
-        <div className="flex items-center justify-between h-[120px] px-6 border-b border-primary-700 flex-shrink-0">
+        <div className="flex items-center justify-between h-[120px] px-6 border-b border-blue-800 flex-shrink-0">
             <div className={`flex items-center gap-3 overflow-hidden transition-opacity ${isCollapsed ? 'opacity-0 w-0' : 'opacity-100'}`}>
-                {/* O nome SIRU foi removido daqui e o ícone movido para o Header.tsx */}
+                {/* Nome/Logo SIRU gerido pelo Header agora */}
             </div>
-            <button onClick={toggleSidebar} className="text-2xl hover:text-secondary-500 h-full px-2 -mr-4">
+            <button onClick={toggleSidebar} className="text-2xl hover:text-green-400 h-full px-2 -mr-4 focus:outline-none">
                 <i className={`fa-solid ${isCollapsed ? 'fa-angles-right' : 'fa-angles-left'}`}></i>
             </button>
         </div>
@@ -116,27 +118,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, user, onT
                     return (
                         <li key={item.id}>
                             <a href="#" onClick={(e) => { e.preventDefault(); setView(item.id); }}
-                               className={`flex items-center py-3 px-4 my-1 rounded-md transition-colors ${activeView === item.id ? 'bg-unilab-green' : 'hover:bg-primary-600'}`}>
+                               className={`flex items-center py-3 px-4 my-1 rounded-md transition-colors ${activeView === item.id ? 'bg-unilab-green text-white shadow-sm' : 'hover:bg-blue-800 text-blue-100'}`}>
                                 <i className={`fa-solid ${item.icon} w-8 text-center text-xl`}></i>
                                 {!isCollapsed && <span className="ml-3 font-medium whitespace-nowrap">{item.name}</span>}
                             </a>
                         </li>
                     )
                 })}
-                {/* O botão do Assistente de Segurança foi removido daqui */}
                 
                  <li key="systems-accordion">
                     <a href="#" onClick={(e) => { e.preventDefault(); setIsSystemsOpen(!isSystemsOpen); }}
-                        className={`flex items-center py-3 px-4 my-1 rounded-md transition-colors hover:bg-primary-600`}>
+                        className={`flex items-center py-3 px-4 my-1 rounded-md transition-colors hover:bg-blue-800 text-blue-100`}>
                         <i className={`fa-solid fa-layer-group w-8 text-center text-xl`}></i>
                         {!isCollapsed && <span className="ml-3 font-medium whitespace-nowrap">Sistemas Unilab</span>}
                         {!isCollapsed && <i className={`fa-solid fa-chevron-down ml-auto transition-transform ${isSystemsOpen ? 'rotate-180' : ''}`}></i>}
                     </a>
                     {isSystemsOpen && !isCollapsed && (
-                        <ul className="pl-12 py-1 bg-primary-700/50">
+                        <ul className="pl-12 py-1 bg-blue-900/30 rounded-md mb-2">
                             {systemLinks.map(link => (
                                 <li key={link.name}>
-                                    <a href={link.href} target="_blank" rel="noopener noreferrer" className="flex items-center py-2 px-4 text-sm hover:bg-primary-600 rounded-md">
+                                    <a href={link.href} target="_blank" rel="noopener noreferrer" className="flex items-center py-2 px-4 text-sm hover:text-green-300 text-blue-200 rounded-md transition-colors">
+                                        <i className="fa-solid fa-arrow-up-right-from-square mr-2 text-xs opacity-70"></i>
                                         {link.name}
                                     </a>
                                 </li>
@@ -146,11 +148,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, user, onT
                 </li>
                 <li key='alerts'>
                     <a href="#" onClick={(e) => { e.preventDefault(); setIsDrawerOpen(true); }}
-                       className={`relative flex items-center py-3 px-4 my-1 rounded-md transition-colors hover:bg-primary-600`}>
+                       className={`relative flex items-center py-3 px-4 my-1 rounded-md transition-colors hover:bg-blue-800 text-blue-100`}>
                         <i className={`fa-solid fa-bell w-8 text-center text-xl`}></i>
                         {!isCollapsed && <span className="ml-3 font-medium whitespace-nowrap">Alertas</span>}
                         {lowStockCount > 0 && (
-                            <span className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent-500 text-xs font-bold text-white ring-2 ring-unilab-blue">
+                            <span className="absolute top-3 right-3 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-unilab-blue animate-pulse">
                                 {lowStockCount}
                             </span>
                         )}
@@ -159,26 +161,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, user, onT
             </ul>
         </nav>
 
-        <div className="p-4 border-t border-primary-700 flex-shrink-0">
-             <div className="p-3 rounded-md bg-primary-600/50">
+        <div className="p-4 border-t border-blue-800 flex-shrink-0 bg-blue-900/20">
+             <div className="p-3 rounded-md">
                 <div className="flex items-center gap-3">
                     <div className={`transition-all ${isCollapsed ? 'w-full flex justify-center' : ''}`}>
-                        <i className={`fa-solid fa-circle-user text-3xl`}></i>
+                        <div className="w-10 h-10 rounded-full bg-blue-700 flex items-center justify-center text-white font-bold border-2 border-green-400">
+                            {user.name.charAt(0)}
+                        </div>
                     </div>
                     {!isCollapsed && (
                         <div className="overflow-hidden">
-                            <p className="font-bold text-sm whitespace-nowrap">{user.name}</p>
-                            <p className="text-xs text-gray-300 whitespace-nowrap">{user.role === 'ADMIN' ? 'Administrador' : 'Pesquisador'}</p>
+                            <p className="font-bold text-sm whitespace-nowrap text-white">{user.name.split(' ')[0]}</p>
+                            <p className="text-xs text-blue-300 whitespace-nowrap uppercase tracking-wider">{user.role === 'ADMIN' ? 'Administrador' : 'Pesquisador'}</p>
                         </div>
                     )}
                 </div>
             </div>
-             <div className={`flex mt-3 ${isCollapsed ? 'flex-col' : ''}`}>
-                <button onClick={onToggleRole} title="Alternar Perfil de Usuário" className={`flex-1 flex items-center justify-center p-3 rounded-md bg-gray-700 hover:bg-gray-600 transition-colors ${isCollapsed ? 'h-12' : ''}`}>
-                    <i className="fa-solid fa-right-left text-xl"></i>
-                    {!isCollapsed && <span className="ml-3 text-sm font-semibold whitespace-nowrap">Alternar</span>}
+             {/* Botão de Alternar Papel (Apenas para dev/demo, pode remover em produção se não precisar) */}
+             {/* <div className={`flex mt-2 ${isCollapsed ? 'flex-col' : ''}`}>
+                <button onClick={onToggleRole} title="Alternar Perfil" className={`flex-1 flex items-center justify-center p-2 rounded-md bg-blue-800 hover:bg-blue-700 text-blue-200 transition-colors ${isCollapsed ? 'h-10' : ''}`}>
+                    <i className="fa-solid fa-users-gear text-sm"></i>
                 </button>
-             </div>
+             </div> */}
         </div>
     </aside>
     <AlertsDrawer 
