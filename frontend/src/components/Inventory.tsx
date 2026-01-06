@@ -1,6 +1,5 @@
 // frontend/src/components/Inventory.tsx
 import React, { useState } from 'react';
-// CORREÇÃO 1: Importar RequestStatus aqui
 import { Reagent, User, WithdrawalRequest, RequestStatus } from '../types';
 
 interface InventoryProps {
@@ -51,18 +50,44 @@ export const Inventory: React.FC<InventoryProps> = ({
   const categories = ['Todos', 'Ácidos', 'Bases', 'Sais', 'Solventes', 'Outros'];
   const formCategories = ['Ácidos', 'Bases', 'Sais', 'Solventes', 'Outros'];
 
-  // --- Lógica de Filtro ---
+  // --- Lógica de Filtro (CORRIGIDA: Aceita variações Singular/Plural) ---
   const filteredReagents = reagents.filter(reagent => {
-    const matchesSearch = reagent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (reagent.casNumber && reagent.casNumber.includes(searchTerm)) ||
-                          (reagent.formula && reagent.formula.toLowerCase().includes(searchTerm.toLowerCase()));
+    // 1. Busca Textual
+    const term = searchTerm.toLowerCase().trim();
+    const matchesSearch = reagent.name.toLowerCase().includes(term) ||
+                          (reagent.casNumber && reagent.casNumber.includes(term)) ||
+                          (reagent.formula && reagent.formula.toLowerCase().includes(term));
     
-    const matchesCategory = selectedCategory === 'Todos' || reagent.category === selectedCategory;
+    // 2. Filtro de Categoria Inteligente
+    let matchesCategory = false;
+
+    if (selectedCategory === 'Todos') {
+        matchesCategory = true;
+    } else {
+        // Mapa de variações aceitas para cada filtro
+        // Isso resolve o problema de 'Sais' (filtro) não achar 'Sais' (banco) se procurasse só por 'Sal'
+        const categoryVariations: { [key: string]: string[] } = {
+            'Ácidos': ['ácido', 'ácidos'],
+            'Bases': ['base', 'bases'],
+            'Sais': ['sal', 'sais'], // AGORA ACEITA OS DOIS!
+            'Solventes': ['solvente', 'solventes'],
+            'Outros': ['outro', 'outros']
+        };
+
+        // Pega as variações possíveis ou usa a própria palavra selecionada
+        const validTerms = categoryVariations[selectedCategory] || [selectedCategory.toLowerCase()];
+        
+        // Categoria do item no banco (normalizada)
+        const itemCat = reagent.category ? reagent.category.toLowerCase().trim() : '';
+
+        // Verifica se a categoria do item contém ALGUMA das variações aceitas
+        matchesCategory = validTerms.some(term => itemCat.includes(term));
+    }
     
     return matchesSearch && matchesCategory;
   });
 
-  // --- Handlers do Formulário (Adicionar/Editar) ---
+  // --- Handlers do Formulário ---
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     if (type === 'checkbox') {
@@ -132,7 +157,6 @@ export const Inventory: React.FC<InventoryProps> = ({
          amount: Number(withdrawAmount),
          unit: withdrawalReagent.unit,
          requestedAt: new Date().toISOString(),
-         // CORREÇÃO 2: Usar o Enum RequestStatus.PENDING
          status: RequestStatus.PENDING,
          reason: withdrawReason,
          requestedBy: user.name,
@@ -260,7 +284,7 @@ export const Inventory: React.FC<InventoryProps> = ({
                   <td colSpan={7} className="px-6 py-10 text-center text-gray-500">
                     <div className="flex flex-col items-center gap-2">
                       <i className="fa-solid fa-flask text-4xl text-gray-300"></i>
-                      <p>Nenhum reagente encontrado.</p>
+                      <p>Nenhum reagente encontrado nesta categoria.</p>
                     </div>
                   </td>
                 </tr>
