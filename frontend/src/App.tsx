@@ -5,7 +5,6 @@ import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Inventory } from './components/Inventory';
 import { WasteManagement } from './components/WasteManagement';
-import { SafetyAssistant } from './components/SafetyAssistant';
 import { Withdrawals } from './components/Withdrawals';
 import { AccessibilityDock } from './components/AccessibilityDock';
 import { Login } from './components/Login'; 
@@ -241,7 +240,6 @@ export const App: React.FC = () => {
         // Correto: WasteManagement busca seus próprios dados
         return <WasteManagement user={currentUser} />;
       
-      case 'assistant': return <SafetyAssistant />;
       
       default: 
         // ATUALIZADO: Removemos props desnecessários
@@ -255,7 +253,6 @@ export const App: React.FC = () => {
       'inventory': 'Estoque de Reagentes',
       'withdrawals': 'Aprovação de Retiradas',
       'waste': 'Gestão de Resíduos',
-      'assistant': 'Assistente de Segurança'
     };
     return titles[view] || 'SIRU';
   };

@@ -1,7 +1,6 @@
-
-
+// frontend/src/components/Sidebar.tsx
 import React, { useState } from 'react';
-import { User, Reagent } from '../../../types';
+import { User, Reagent } from '../types';
 
 interface SidebarProps {
   activeView: string;
@@ -124,13 +123,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, user, onT
                         </li>
                     )
                 })}
-                 <li key='assistant'>
-                    <a href="#" onClick={(e) => { e.preventDefault(); setView('assistant'); }}
-                       className={`flex items-center py-3 px-4 my-1 rounded-md transition-colors ${activeView === 'assistant' ? 'bg-unilab-green' : 'hover:bg-primary-600'}`}>
-                        <i className={`fa-solid fa-user-shield w-8 text-center text-xl`}></i>
-                        {!isCollapsed && <span className="ml-3 font-medium whitespace-nowrap">Assistente de Segurança</span>}
-                    </a>
-                </li>
+                {/* O botão do Assistente de Segurança foi removido daqui */}
+                
                  <li key="systems-accordion">
                     <a href="#" onClick={(e) => { e.preventDefault(); setIsSystemsOpen(!isSystemsOpen); }}
                         className={`flex items-center py-3 px-4 my-1 rounded-md transition-colors hover:bg-primary-600`}>

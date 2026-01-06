@@ -141,7 +141,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
               {user.role === 'ADMIN' && (
                 <QuickActionButton icon="fa-trash-can" label="Gestão de Resíduos" onClick={() => onNavigate('waste')} color="border-green-200 text-green-600"/>
               )}
-              <QuickActionButton icon="fa-user-shield" label="Assistente IA" onClick={() => onNavigate('assistant')} color="border-indigo-200 text-indigo-600"/>
+              {/* BOTÃO DO ASSISTENTE IA REMOVIDO DAQUI */}
           </div>
       </div>
 
