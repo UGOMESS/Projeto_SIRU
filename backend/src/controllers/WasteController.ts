@@ -41,9 +41,59 @@ export const WasteController = {
     }
   },
 
+  // 3. Atualizar Bombona (PUT) - NOVO
+  async updateContainer(req: Request, res: Response) {
+    const { id } = req.params;
+    const { identifier, type, capacity, location } = req.body;
+
+    try {
+      const container = await prisma.wasteContainer.update({
+        where: { id },
+        data: {
+          identifier,
+          type,
+          capacity: Number(capacity),
+          location
+        }
+      });
+
+      return res.json(container);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Erro ao atualizar bombona." });
+    }
+  },
+
+  // 4. Excluir Bombona (DELETE) - NOVO
+  async deleteContainer(req: Request, res: Response) {
+    const { id } = req.params;
+
+    try {
+      // Segurança: Verifica se já existe histórico de descarte nesta bombona
+      const logsCount = await prisma.wasteLog.count({
+        where: { containerId: id }
+      });
+
+      if (logsCount > 0) {
+        return res.status(400).json({ 
+          error: "Não é possível excluir: Esta bombona possui histórico de descartes. Tente editá-la ou arquivá-la." 
+        });
+      }
+
+      await prisma.wasteContainer.delete({
+        where: { id }
+      });
+
+      return res.status(204).send(); // Sucesso sem conteúdo
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Erro ao excluir bombona." });
+    }
+  },
+
   // --- LOGS DE DESCARTE ---
 
-  // 3. Registrar um Descarte (A Mágica acontece aqui!)
+  // 5. Registrar um Descarte (A Mágica acontece aqui!)
   async createLog(req: Request, res: Response) {
     try {
       const { description, quantity, containerId } = req.body;
@@ -99,7 +149,7 @@ export const WasteController = {
     }
   },
 
-  // 4. Listar Histórico de Descartes
+  // 6. Listar Histórico de Descartes
   async getLogs(req: Request, res: Response) {
     try {
       const logs = await prisma.wasteLog.findMany({
