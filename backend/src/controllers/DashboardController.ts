@@ -1,4 +1,5 @@
 // backend/src/controllers/DashboardController.ts
+
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 
@@ -6,12 +7,11 @@ export class DashboardController {
   static async getStats(req: Request, res: Response) {
     try {
       // 1. Buscas diretas no Banco
-      const [totalReagents, pendingRequests, wasteVolume] = await Promise.all([
+      const [totalReagents, pendingRequests, wasteVolume, categoryGroups] = await Promise.all([
         // Conta total de reagentes
         prisma.reagent.count(),
         
-        // CORREÇÃO AQUI: Mudamos de .withdrawalRequest para .request
-        // Conta pedidos pendentes
+        // Conta pedidos pendentes (usando .request conforme sua correção)
         prisma.request.count({
           where: { status: 'PENDING' }
         }),
@@ -19,24 +19,38 @@ export class DashboardController {
         // Soma o volume de resíduos
         prisma.wasteLog.aggregate({
           _sum: { quantity: true }
+        }),
+
+        // --- NOVO: Agrupamento por Categoria para o Gráfico ---
+        prisma.reagent.groupBy({
+          by: ['category'],
+          _count: {
+            category: true,
+          },
         })
       ]);
 
       // 2. Cálculo de Estoque Baixo
       // Buscamos apenas os campos necessários
       const allReagents = await prisma.reagent.findMany({
-        select: { quantity: true, minQuantity: true }
+        select: { quantity: true, minQuantity: true } // Mantendo minQuantity conforme seu snippet
       });
       
       // Filtramos na memória: Quantidade atual < Quantidade mínima
-      // Usamos (r: any) para evitar erros de tipagem momentâneos
       const lowStockCount = allReagents.filter((r: any) => r.quantity < r.minQuantity).length;
+
+      // 3. Formata os dados de categoria para o frontend (Recharts)
+      const categoryStats = categoryGroups.map(group => ({
+        name: group.category,
+        qtd: group._count.category
+      }));
 
       return res.json({
         totalReagents,
         lowStockReagents: lowStockCount,
         pendingRequests,
-        totalWaste: wasteVolume._sum.quantity || 0 
+        totalWaste: wasteVolume._sum.quantity || 0,
+        categoryStats // <--- Enviando os dados reais para o gráfico
       });
 
     } catch (error) {
