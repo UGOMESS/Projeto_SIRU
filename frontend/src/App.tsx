@@ -11,6 +11,9 @@ import { Login } from './components/Login';
 import { User, Reagent, WithdrawalRequest, RequestStatus } from './types';
 import { api, updateReagent } from './services/api'; 
 
+import { ToastContainer, toast as toastify } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 interface ToastProps {
   msg: string;
   type: 'success' | 'error' | 'info';
@@ -63,7 +66,6 @@ export const App: React.FC = () => {
 
         setReagents(resReagents.data);
 
-        // Mapeamento de pedidos
         const formattedRequests = resRequests.data.map((req: any) => {
            const hasItems = req.items && Array.isArray(req.items) && req.items.length > 0;
            const firstItem = hasItems ? req.items[0] : null;
@@ -102,7 +104,7 @@ export const App: React.FC = () => {
     localStorage.setItem('siru_token', token);
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     setCurrentUser(user);
-    showToast(`Bem-vindo, ${user.name}!`);
+    toastify.success(`Bem-vindo, ${user.name}!`);
   };
 
   const handleLogout = () => {
@@ -133,9 +135,9 @@ export const App: React.FC = () => {
       const { id, ...reagentData } = newReagent;
       const response = await api.post('/reagents', reagentData);
       setReagents(prev => [response.data, ...prev]);
-      showToast('Reagente salvo com sucesso!');
+      toastify.success('Reagente salvo com sucesso!');
     } catch (error) {
-      showToast('Erro ao salvar reagente.', 'error');
+      toastify.error('Erro ao salvar reagente.');
     }
   };
 
@@ -144,9 +146,9 @@ export const App: React.FC = () => {
     try {
         await api.delete(`/reagents/${id}`);
         setReagents(prev => prev.filter(item => item.id !== id));
-        showToast('Reagente excluído.');
+        toastify.success('Reagente excluído.');
     } catch (error) {
-        showToast('Erro ao excluir reagente.', 'error');
+        toastify.error('Erro ao excluir reagente.');
     }
   };
 
@@ -154,9 +156,9 @@ export const App: React.FC = () => {
     try {
       const saved = await updateReagent(updatedReagent.id, updatedReagent);
       setReagents(prev => prev.map(item => item.id === saved.id ? saved : item));
-      showToast('Reagente atualizado!');
+      toastify.success('Reagente atualizado!');
     } catch (error) {
-      showToast('Erro ao atualizar reagente.', 'error');
+      toastify.error('Erro ao atualizar reagente.');
     }
   };
 
@@ -181,9 +183,9 @@ export const App: React.FC = () => {
       };
 
       setWithdrawals(prev => [createdRequest, ...prev]);
-      showToast('Solicitação enviada para aprovação!', 'success');
+      toastify.success('Solicitação enviada para aprovação!');
     } catch (error) {
-      showToast('Erro ao enviar solicitação.', 'error');
+      toastify.error('Erro ao enviar solicitação.');
     }
   };
 
@@ -206,15 +208,15 @@ export const App: React.FC = () => {
                 : r
             ));
         }
-        showToast('Solicitação aprovada. Estoque atualizado.', 'success');
+        toastify.success('Solicitação aprovada. Estoque atualizado.');
       } else {
-        showToast('Solicitação recusada.', 'info');
+        toastify.info('Solicitação recusada.');
       }
 
     } catch (error: any) {
       console.error(error);
       const msg = error.response?.data?.error || 'Erro ao processar solicitação.';
-      showToast(msg, 'error');
+      toastify.error(msg);
     }
   };
 
@@ -223,7 +225,6 @@ export const App: React.FC = () => {
     if (!currentUser) return null;
     switch (currentView) {
       case 'dashboard': 
-        // ATUALIZADO: Removemos props desnecessários
         return <Dashboard user={currentUser} onNavigate={setCurrentView} />;
       
       case 'inventory': 
@@ -231,18 +232,14 @@ export const App: React.FC = () => {
       
       case 'withdrawals': 
         if (currentUser.role !== 'ADMIN') {
-             // ATUALIZADO: Removemos props desnecessários do fallback
              return <Dashboard user={currentUser} onNavigate={setCurrentView} />;
         }
         return <Withdrawals requests={withdrawals} onAction={handleWithdrawalAction} />;
       
       case 'waste': 
-        // Correto: WasteManagement busca seus próprios dados
         return <WasteManagement user={currentUser} />;
       
-      
       default: 
-        // ATUALIZADO: Removemos props desnecessários
         return <Dashboard user={currentUser} onNavigate={setCurrentView} />;
     }
   };
@@ -261,6 +258,14 @@ export const App: React.FC = () => {
     return (
       <div className={`min-h-screen font-sans text-slate-800 ${isHighContrast ? 'high-contrast' : ''}`} style={{ fontSize: `${fontSize}px` }}>
         <Login onLoginSuccess={handleLoginSuccess} />
+        
+        {/* CORREÇÃO AQUI: Adicionado aria-label */}
+        <ToastContainer 
+          position="top-right" 
+          autoClose={3000} 
+          theme="colored" 
+          aria-label="Notificações do sistema"
+        />
       </div>
     );
   }
@@ -283,6 +288,7 @@ export const App: React.FC = () => {
         />
         
         <main id="main-content" className={`flex-1 p-8 overflow-y-auto h-[calc(100vh-120px)] relative transition-all duration-300 ${isSidebarCollapsed ? 'ml-20' : 'ml-72'}`}>
+          
           {toast && (
             <div className={`fixed top-36 right-6 z-50 px-6 py-3 rounded-xl shadow-lg transform transition-all duration-300 flex items-center gap-3 ${
               toast.type === 'success' ? 'bg-green-600 text-white' : 
@@ -295,6 +301,21 @@ export const App: React.FC = () => {
               <span className="font-medium">{toast.msg}</span>
             </div>
           )}
+
+          {/* CORREÇÃO AQUI: Adicionado aria-label */}
+          <ToastContainer 
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="colored"
+            aria-label="Notificações do sistema"
+          />
 
           <header className="mb-8 flex justify-between items-center">
             <div>
