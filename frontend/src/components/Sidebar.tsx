@@ -86,17 +86,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, user, onT
     .slice(0, 5);
 
   const navItems = [
-    // AQUI ESTÁ A MUDANÇA: 'Dashboard' -> 'Visão Geral'
     { id: 'dashboard', name: 'Visão Geral', icon: 'fa-chart-pie' }, 
     { id: 'inventory', name: 'Estoque', icon: 'fa-flask' },
     { id: 'withdrawals', name: 'Retiradas', icon: 'fa-dolly', adminOnly: true },
     { id: 'waste', name: 'Resíduos', icon: 'fa-recycle', adminOnly: true },
   ];
   
+  // ATUALIZADO: Webmail removido, Pergamum corrigido e Portal Unilab mantido
   const systemLinks = [
-      { name: 'SIGAA', href: 'https://sig.unilab.edu.br/sigaa/verTelaLogin.do' },
+      { name: 'Portal Unilab', href: 'https://unilab.edu.br/' },
+      { name: 'SIGAA', href: 'https://sig.unilab.edu.br/sigaa/' },
       { name: 'SEI', href: 'https://sei.unilab.edu.br/' },
-      { name: 'Webmail', href: 'https://webmail.unilab.edu.br/' },
+      { name: 'Biblioteca (Pergamum)', href: 'https://bibweb.unilab.edu.br/' },
   ];
 
   return (
@@ -104,7 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, user, onT
     <aside className={`fixed top-0 left-0 h-full bg-unilab-blue text-white transition-all duration-300 z-30 flex flex-col ${isCollapsed ? 'w-20' : 'w-72'}`}>
         <div className="flex items-center justify-between h-[120px] px-6 border-b border-blue-800 flex-shrink-0">
             <div className={`flex items-center gap-3 overflow-hidden transition-opacity ${isCollapsed ? 'opacity-0 w-0' : 'opacity-100'}`}>
-                {/* Nome/Logo SIRU gerido pelo Header agora */}
+                {/* Logo/Nome geridos pelo Header */}
             </div>
             <button onClick={toggleSidebar} className="text-2xl hover:text-green-400 h-full px-2 -mr-4 focus:outline-none">
                 <i className={`fa-solid ${isCollapsed ? 'fa-angles-right' : 'fa-angles-left'}`}></i>
@@ -177,12 +178,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, user, onT
                     )}
                 </div>
             </div>
-             {/* Botão de Alternar Papel (Apenas para dev/demo, pode remover em produção se não precisar) */}
-             {/* <div className={`flex mt-2 ${isCollapsed ? 'flex-col' : ''}`}>
-                <button onClick={onToggleRole} title="Alternar Perfil" className={`flex-1 flex items-center justify-center p-2 rounded-md bg-blue-800 hover:bg-blue-700 text-blue-200 transition-colors ${isCollapsed ? 'h-10' : ''}`}>
-                    <i className="fa-solid fa-users-gear text-sm"></i>
-                </button>
-             </div> */}
         </div>
     </aside>
     <AlertsDrawer 
