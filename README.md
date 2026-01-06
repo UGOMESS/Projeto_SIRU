@@ -46,8 +46,7 @@ Com perfis de acesso distintos, o sistema atende às necessidades tanto dos admi
   - Registro de descarte de resíduos químicos.
   - Monitoramento do nível de preenchimento das bombonas de descarte.
   - Geração de relatórios de descarte em formatos **PDF** e **CSV**.
-- **Assistente de Segurança com IA:**
-  - Um chatbot integrado com a **API do Google Gemini** para responder a perguntas sobre segurança, armazenamento, compatibilidade e descarte de reagentes.
+
 - **Controle de Acesso Baseado em Função (RBAC):**
   - **Administrador:** Acesso total a todas as funcionalidades.
   - **Pesquisador:** Acesso focado na visualização do estoque e na solicitação de reagentes.
@@ -125,7 +124,6 @@ Para executar o projeto em seu ambiente local, siga os passos abaixo rigorosamen
 - **npm** ou **yarn:** Gerenciador de pacotes.
 - **Git:** Sistema de controle de versão.
 - **Docker:** (Opcional se rodar apenas o frontend mockado, obrigatório para backend/banco).
-- **Chave de API do Google Gemini:** É necessário ter uma chave de API para utilizar o Assistente de Segurança. Você pode obter uma no [Google AI Studio](https://aistudio.google.com/app/apikey).
 
 ### Instalação
 
@@ -169,14 +167,6 @@ Em um novo terminal
 cd frontend
 npm install
 ```
-
-5.  **Configure as variáveis de ambiente:**
-  - Crie um arquivo chamado `.env` na raiz da pasta `frontend`.
-  - Adicione sua chave de API do Google Gemini a este arquivo:
-  ```
-  VITE_API_KEY=SUA_CHAVE_DE_API_AQUI
-  ```
-
 
 ---
 
@@ -379,3 +369,7 @@ obs: dessa forma os arquivos do node_mudules são desconsiderados, pois são mui
 ## Licença
 
 Este projeto foi desenvolvido para fins acadêmicos no curso de Engenharia de Computação da Unilab.
+
+---
+**Uitelo Gomes - Engenharia de Computação - UNILAB - 2025**
+---

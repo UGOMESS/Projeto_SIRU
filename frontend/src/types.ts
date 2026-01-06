@@ -65,16 +65,6 @@ export interface WithdrawalRequest {
   usageDate?: string;
 }
 
-export interface WasteLog {
-  id: string;
-  reagentName: string;
-  amount: number;
-  unit: string;
-  disposalDate: string;
-  disposedBy: string;
-  classification: string;
-}
-
 export interface User {
   id: string;
   name: string;
@@ -96,4 +86,40 @@ export interface UniversityNews {
   date: string;
   category: 'Edital' | 'Evento' | 'Aviso' | 'Institucional';
   link: string;
+}
+
+// --- NOVAS INTERFACES PARA GESTÃO DE RESÍDUOS ---
+
+export interface WasteContainer {
+  id: string;
+  identifier: string; // Ex: "B-01"
+  type: string;       // Ex: "Ácidos"
+  capacity: number;   // Capacidade total em Litros
+  currentVolume: number; // Volume ocupado
+  location: string;
+  isActive: boolean;
+}
+
+export interface WasteLog {
+  id: string;
+  description: string;
+  quantity: number;
+  date: string;
+  userId: string;
+  containerId: string;
+  user?: {
+    name: string;
+  };
+  container?: WasteContainer;
+}
+
+// Interface específica para gerar o relatório PDF/CSV
+export interface WasteRecord {
+  id: string;
+  date: string;
+  reagentName: string;
+  amount: number;
+  unit: string;
+  registeredBy: string;
+  destination?: string;
 }

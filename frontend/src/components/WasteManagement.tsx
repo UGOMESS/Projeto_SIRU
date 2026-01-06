@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api'; 
 import { WasteContainer, WasteLog } from '../types';
+// NOVO: Importando os geradores de relatório
+import { generateWasteCSV, generateWastePDF } from '../utils/reportGenerator';
 
 interface WasteManagementProps {
   user: any;
@@ -14,6 +16,9 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
   const [logs, setLogs] = useState<WasteLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // NOVO: Estado para busca
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [showLogModal, setShowLogModal] = useState(false);
   const [showContainerModal, setShowContainerModal] = useState(false);
@@ -30,23 +35,18 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
       setLoading(true);
       setErrorMsg(null);
       
-      console.log("Tentando buscar dados de resíduos..."); // DEBUG
+      console.log("Tentando buscar dados de resíduos..."); 
 
       const [containersRes, logsRes] = await Promise.all([
         api.get('/waste/containers'),
         api.get('/waste/logs')
       ]);
 
-      console.log("Dados recebidos (Containers):", containersRes.data); // DEBUG
-      console.log("Dados recebidos (Logs):", logsRes.data); // DEBUG
-
-      // Proteção: Só salva se for array. Se não for, salva lista vazia.
       setContainers(Array.isArray(containersRes.data) ? containersRes.data : []);
       setLogs(Array.isArray(logsRes.data) ? logsRes.data : []);
 
     } catch (error: any) {
       console.error("Erro FATAL ao carregar resíduos:", error);
-      // Se for erro 404, significa que a rota não existe no backend ainda
       if (error.response?.status === 404) {
         setErrorMsg("Erro 404: O Backend não encontrou as rotas de resíduos. Reinicie o servidor backend.");
       } else {
@@ -91,6 +91,26 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
     }
   };
 
+  // NOVO: Lógica de Filtro
+  const filteredLogs = logs.filter(log => 
+    log.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (log.user?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // NOVO: Função auxiliar para preparar dados para o relatório
+  // Converte WasteLog (do banco) para WasteRecord (do gerador de relatório)
+  const getReportData = () => {
+    return filteredLogs.map(log => ({
+        id: log.id,
+        date: log.date,
+        reagentName: log.description,
+        amount: log.quantity,
+        unit: 'L', // Assumindo Litros com base no contexto
+        registeredBy: log.user?.name || 'Desconhecido',
+        destination: 'Bombona de Descarte'
+    }));
+  };
+
   if (loading) return <div className="p-8 text-center text-gray-500">Carregando gestão de resíduos...</div>;
 
   if (errorMsg) return (
@@ -105,24 +125,38 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+      {/* HEADER E AÇÕES */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
         <div>
             <h2 className="text-xl font-bold text-gray-800">Gestão de Resíduos</h2>
             <p className="text-sm text-gray-500">Controle de descarte químico</p>
         </div>
-        <div className="flex gap-2">
+        
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+            {/* BOTÕES DE EXPORTAÇÃO (SÓ ADMIN) */}
             {user.role === 'ADMIN' && (
-                <button onClick={() => setShowContainerModal(true)} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm">
-                    <i className="fa-solid fa-box"></i> Nova Bombona
-                </button>
+                <>
+                    <button onClick={() => generateWasteCSV(getReportData())} className="bg-green-100 hover:bg-green-200 text-green-800 px-3 py-2 rounded-lg flex items-center gap-2 text-sm border border-green-200 transition-colors" title="Baixar CSV">
+                        <i className="fa-solid fa-file-csv text-lg"></i>
+                    </button>
+                    <button onClick={() => generateWastePDF(getReportData())} className="bg-red-100 hover:bg-red-200 text-red-800 px-3 py-2 rounded-lg flex items-center gap-2 text-sm border border-red-200 transition-colors" title="Baixar PDF">
+                        <i className="fa-solid fa-file-pdf text-lg"></i>
+                    </button>
+                    <div className="w-px bg-gray-300 mx-1"></div> {/* Separador */}
+                    
+                    <button onClick={() => setShowContainerModal(true)} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm text-sm">
+                        <i className="fa-solid fa-box"></i> Nova Bombona
+                    </button>
+                </>
             )}
-            <button onClick={() => setShowLogModal(true)} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm">
+            
+            <button onClick={() => setShowLogModal(true)} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm text-sm">
                 <i className="fa-solid fa-recycle"></i> Registrar Descarte
             </button>
         </div>
       </div>
 
-      {/* LISTA DE BOMBONAS - Com proteção contra crash */}
+      {/* LISTA DE BOMBONAS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {Array.isArray(containers) && containers.map(container => {
             const percentage = Math.min((container.currentVolume / container.capacity) * 100, 100);
@@ -155,22 +189,45 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
         )}
       </div>
 
-      {/* LISTA DE LOGS - Com proteção */}
+      {/* LISTA DE LOGS COM BUSCA */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 bg-gray-50"><h3 className="font-bold text-gray-700">Histórico</h3></div>
+        <div className="p-4 border-b border-gray-100 bg-gray-50 flex flex-col md:flex-row justify-between items-center gap-4">
+            <h3 className="font-bold text-gray-700">Histórico de Descarte</h3>
+            
+            {/* NOVO: Barra de Busca */}
+            <div className="relative w-full md:w-64">
+                <i className="fa-solid fa-search absolute left-3 top-3 text-gray-400 text-sm"></i>
+                <input 
+                  type="text" 
+                  placeholder="Buscar por resíduo..." 
+                  className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+        </div>
+
         <table className="w-full text-left">
             <thead className="bg-gray-50 text-gray-600 text-sm">
                 <tr><th className="p-4">Data</th><th className="p-4">Responsável</th><th className="p-4">Resíduo</th><th className="p-4">Qtd (L)</th></tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-                {Array.isArray(logs) && logs.map(log => (
-                    <tr key={log.id}>
-                        <td className="p-4 text-sm text-gray-600">{new Date(log.date).toLocaleDateString()}</td>
-                        <td className="p-4 text-sm font-medium">{log.user?.name || 'Desconhecido'}</td>
-                        <td className="p-4 text-sm text-gray-600">{log.description}</td>
-                        <td className="p-4 text-sm font-bold">{log.quantity}</td>
+                {filteredLogs.length > 0 ? (
+                    filteredLogs.map(log => (
+                        <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="p-4 text-sm text-gray-600">{new Date(log.date).toLocaleDateString()}</td>
+                            <td className="p-4 text-sm font-medium">{log.user?.name || 'Desconhecido'}</td>
+                            <td className="p-4 text-sm text-gray-600">{log.description}</td>
+                            <td className="p-4 text-sm font-bold">{log.quantity}</td>
+                        </tr>
+                    ))
+                ) : (
+                    <tr>
+                        <td colSpan={4} className="p-8 text-center text-gray-500">
+                            Nenhum registro encontrado.
+                        </td>
                     </tr>
-                ))}
+                )}
             </tbody>
         </table>
       </div>
@@ -178,7 +235,7 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
       {/* MODAL NOVA BOMBONA */}
       {showContainerModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <div className="bg-white rounded-xl p-6 w-full max-w-md animate-fade-in">
                 <h3 className="font-bold mb-4">Nova Bombona</h3>
                 <form onSubmit={handleCreateContainer} className="space-y-3">
                     <input required placeholder="Identificador (Ex: B-01)" className="w-full p-2 border rounded" value={newContainer.identifier} onChange={e => setNewContainer({...newContainer, identifier: e.target.value})} />
@@ -197,7 +254,7 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
       {/* MODAL DESCARTE */}
       {showLogModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <div className="bg-white rounded-xl p-6 w-full max-w-md animate-fade-in">
                 <h3 className="font-bold mb-4">Registrar Descarte</h3>
                 <form onSubmit={handleRegisterLog} className="space-y-3">
                     <input required placeholder="Descrição do Resíduo" className="w-full p-2 border rounded" value={newLog.description} onChange={e => setNewLog({...newLog, description: e.target.value})} />
