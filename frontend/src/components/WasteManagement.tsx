@@ -26,11 +26,9 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
   const [showContainerModal, setShowContainerModal] = useState(false);
 
   // --- ESTADOS DE FORMULÁRIO (CRUD) ---
-  // Se editingContainerId for null = Criando. Se tiver ID = Editando.
   const [editingContainerId, setEditingContainerId] = useState<string | null>(null);
   
   const [newLog, setNewLog] = useState({ description: '', quantity: '', containerId: '' });
-  // Renomeei de 'newContainer' para 'containerForm' pois serve para editar também
   const [containerForm, setContainerForm] = useState({ identifier: '', type: '', capacity: '', location: '' });
 
   useEffect(() => {
@@ -58,13 +56,13 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
   // --- LÓGICA CRUD BOMBONAS ---
 
   const openCreateModal = () => {
-      setEditingContainerId(null); // Modo Criação
-      setContainerForm({ identifier: '', type: '', capacity: '', location: '' }); // Limpa form
+      setEditingContainerId(null);
+      setContainerForm({ identifier: '', type: '', capacity: '', location: '' });
       setShowContainerModal(true);
   };
 
   const openEditModal = (container: WasteContainer) => {
-      setEditingContainerId(container.id); // Modo Edição
+      setEditingContainerId(container.id);
       setContainerForm({
           identifier: container.identifier,
           type: container.type,
@@ -80,11 +78,9 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
       const payload = { ...containerForm, capacity: Number(containerForm.capacity) };
       
       if (editingContainerId) {
-          // ATUALIZAR (PUT)
           await api.put(`/waste/containers/${editingContainerId}`, payload);
           alert("Bombona atualizada com sucesso!");
       } else {
-          // CRIAR (POST)
           await api.post('/waste/containers', payload);
           alert("Bombona cadastrada!");
       }
@@ -92,7 +88,7 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
       setShowContainerModal(false);
       fetchData();
     } catch (error) {
-      alert("Erro ao salvar bombona. Verifique se o backend suporta essa operação.");
+      alert("Erro ao salvar bombona.");
     }
   };
 
@@ -124,7 +120,7 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
     } catch (error: any) { alert(error.response?.data?.error || "Erro ao registrar."); }
   };
 
-  // --- LÓGICA DE FILTRAGEM (Mantida igual) ---
+  // --- LÓGICA DE FILTRAGEM ---
   const filteredLogs = logs.filter(log => {
     const matchesSearch = log.description.toLowerCase().includes(searchTerm.toLowerCase()) || (log.user?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesContainer = filterContainerId === 'all' || log.containerId === filterContainerId;
@@ -242,28 +238,20 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
             const isSelected = filterContainerId === 'all' || filterContainerId === container.id;
             
             return (
-                <div key={container.id} className={`relative bg-white p-5 rounded-xl shadow-sm border transition-all group ${isSelected ? 'border-gray-300 opacity-100' : 'border-gray-100 opacity-40'}`}>
+                <div key={container.id} className={`bg-white p-5 rounded-xl shadow-sm border transition-all ${isSelected ? 'border-gray-300 opacity-100' : 'border-gray-100 opacity-40'}`}>
                     
-                    {/* AÇÕES DE EDITAR/EXCLUIR (ADMIN ONLY) */}
-                    {user.role === 'ADMIN' && (
-                        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={(e) => { e.stopPropagation(); openEditModal(container); }} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="Editar">
-                                <i className="fa-solid fa-pen text-sm"></i>
-                            </button>
-                            <button onClick={(e) => { e.stopPropagation(); handleDeleteContainer(container.id); }} className="p-1.5 text-red-500 hover:bg-red-50 rounded" title="Excluir">
-                                <i className="fa-solid fa-trash text-sm"></i>
-                            </button>
-                        </div>
-                    )}
-
+                    {/* CABEÇALHO */}
                     <div className="flex justify-between items-start mb-4">
                         <div>
                             <h3 className="font-bold text-gray-800 text-lg">{container.identifier}</h3>
                             <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded mt-1 inline-block">{container.type}</span>
                         </div>
-                        <i className={`fa-solid fa-drum-steelpan text-2xl ${isFull ? 'text-red-500' : 'text-green-500'}`}></i>
+                        {/* Ícone da bombona agora livre de sobreposições */}
+                        <i className={`fa-solid fa-drum-steelpan text-3xl ${isFull ? 'text-red-500' : 'text-green-500 opacity-70'}`}></i>
                     </div>
-                    <div className="mb-2">
+
+                    {/* PROGRESSO */}
+                    <div className="mb-4">
                         <div className="flex justify-between text-sm mb-1">
                             <span className="text-gray-600">Ocupação</span>
                             <span className={`font-bold ${isFull ? 'text-red-600' : 'text-blue-600'}`}>{percentage.toFixed(1)}%</span>
@@ -272,8 +260,32 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
                             <div className={`h-full rounded-full ${isFull ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${percentage}%` }}></div>
                         </div>
                     </div>
-                    <div className="text-xs text-gray-400 mt-2 flex items-center gap-1">
-                        <i className="fa-solid fa-location-dot"></i> {container.location}
+
+                    {/* RODAPÉ DO CARD: LOCALIZAÇÃO E AÇÕES */}
+                    <div className="flex justify-between items-end border-t border-gray-50 pt-3">
+                        <div className="text-xs text-gray-400 flex items-center gap-1">
+                            <i className="fa-solid fa-location-dot"></i> {container.location}
+                        </div>
+
+                        {/* BOTÕES DE AÇÃO - Direita Inferior, Sempre Visíveis */}
+                        {user.role === 'ADMIN' && (
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); openEditModal(container); }} 
+                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" 
+                                    title="Editar"
+                                >
+                                    <i className="fa-solid fa-pen-to-square text-lg"></i>
+                                </button>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteContainer(container.id); }} 
+                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" 
+                                    title="Excluir"
+                                >
+                                    <i className="fa-solid fa-trash-can text-lg"></i>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
