@@ -1,4 +1,5 @@
 // frontend/src/App.tsx
+
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -7,8 +8,9 @@ import { Inventory } from './components/Inventory';
 import { WasteManagement } from './components/WasteManagement';
 import { Withdrawals } from './components/Withdrawals';
 import { AccessibilityDock } from './components/AccessibilityDock';
+import { MyRequests } from './components/MyRequests'; // <--- 1. Importação Nova
 import { Login } from './components/Login'; 
-import { User, Reagent, WithdrawalRequest, RequestStatus } from './types';
+import { User, Reagent, WithdrawalRequest } from './types';
 import { api, updateReagent } from './services/api'; 
 
 import { ToastContainer, toast as toastify } from 'react-toastify';
@@ -38,7 +40,8 @@ export const App: React.FC = () => {
   const [fontSize, setFontSize] = useState(16);
 
   const [reagents, setReagents] = useState<Reagent[]>([]); 
-  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]); 
+  
+  // (Nota: Removemos o estado 'withdrawals' daqui, pois agora cada componente busca seus dados)
 
   // --- Efeitos (Side Effects) ---
 
@@ -53,44 +56,18 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // 2. Carregar Dados Iniciais (Reagentes e Pedidos)
+  // 2. Carregar Dados Iniciais (Apenas Reagentes agora)
   useEffect(() => {
     if (!currentUser) return; 
 
     const fetchData = async () => {
       try {
-        const [resReagents, resRequests] = await Promise.all([
-          api.get('/reagents'),
-          api.get('/requests')
-        ]);
-
+        const resReagents = await api.get('/reagents');
         setReagents(resReagents.data);
-
-        const formattedRequests = resRequests.data.map((req: any) => {
-           const hasItems = req.items && Array.isArray(req.items) && req.items.length > 0;
-           const firstItem = hasItems ? req.items[0] : null;
-           const reagent = firstItem ? firstItem.reagent : null;
-
-           return {
-             id: req.id,
-             reagentId: reagent?.id || 'unknown',
-             reagentName: reagent?.name || 'Reagente Removido',
-             amount: firstItem?.quantity || 0,
-             unit: reagent?.unit || 'UNID',
-             requestedBy: req.user?.name || 'Desconhecido',
-             requestedAt: req.createdAt,
-             status: req.status ? req.status.toUpperCase() : 'PENDING',
-             reason: req.reason || '',
-             usageDate: req.usageDate 
-           };
-        });
-
-        setWithdrawals(formattedRequests);
-
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
         if ((error as any).response?.status === 401) {
-             handleLogout();
+              handleLogout();
         }
       }
     };
@@ -117,6 +94,7 @@ export const App: React.FC = () => {
   };
 
   // --- Handlers de UI ---
+  // (Mantido para compatibilidade com código legado, mas preferimos usar toastify direto)
   const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
@@ -165,58 +143,24 @@ export const App: React.FC = () => {
   // --- Handlers de Pedidos ---
   const handleCreateWithdrawalRequest = async (newRequest: WithdrawalRequest) => {
     try {
+      // 1. Prepara o payload para o novo formato do backend (itens array)
       const payload = {
-        reagentId: newRequest.reagentId,
-        amount: Number(newRequest.amount),
+        items: [{
+            reagentId: newRequest.reagentId,
+            quantity: Number(newRequest.amount)
+        }],
         reason: newRequest.reason,
         usageDate: newRequest.usageDate
       };
 
-      const response = await api.post('/requests', payload);
+      await api.post('/requests', payload);
+      toastify.success('Solicitação enviada! Acompanhe em "Meus Pedidos".');
+      
+      // 2. Redireciona o usuário para ver o pedido na nova tela
+      setCurrentView('my-requests');
 
-      const createdRequest: WithdrawalRequest = {
-        ...newRequest,
-        id: response.data.id,
-        status: RequestStatus.PENDING,
-        requestedAt: new Date().toISOString(),
-        requestedBy: currentUser?.name || 'Eu'
-      };
-
-      setWithdrawals(prev => [createdRequest, ...prev]);
-      toastify.success('Solicitação enviada para aprovação!');
     } catch (error) {
       toastify.error('Erro ao enviar solicitação.');
-    }
-  };
-
-  const handleWithdrawalAction = async (id: string, newStatus: RequestStatus) => {
-    try {
-      const statusPayload = String(newStatus).toUpperCase();
-
-      await api.patch(`/requests/${id}/status`, { status: statusPayload });
-
-      setWithdrawals(prev => prev.map(req => 
-        req.id === id ? { ...req, status: statusPayload as RequestStatus } : req
-      ));
-
-      if (statusPayload === 'APPROVED') {
-        const request = withdrawals.find(w => w.id === id);
-        if (request) {
-            setReagents(prev => prev.map(r => 
-                r.id === request.reagentId 
-                ? { ...r, quantity: Number((r.quantity - request.amount).toFixed(2)) } 
-                : r
-            ));
-        }
-        toastify.success('Solicitação aprovada. Estoque atualizado.');
-      } else {
-        toastify.info('Solicitação recusada.');
-      }
-
-    } catch (error: any) {
-      console.error(error);
-      const msg = error.response?.data?.error || 'Erro ao processar solicitação.';
-      toastify.error(msg);
     }
   };
 
@@ -230,11 +174,16 @@ export const App: React.FC = () => {
       case 'inventory': 
         return <Inventory user={currentUser} reagents={reagents} onAddReagent={handleAddReagent} onDeleteReagent={handleDeleteReagent} onUpdateReagent={handleUpdateReagent} onRequestWithdrawal={handleCreateWithdrawalRequest} />;
       
+      // <--- 2. Rota Nova: Meus Pedidos
+      case 'my-requests':
+        return <MyRequests user={currentUser} />;
+
       case 'withdrawals': 
         if (currentUser.role !== 'ADMIN') {
-             return <Dashboard user={currentUser} onNavigate={setCurrentView} />;
+              return <Dashboard user={currentUser} onNavigate={setCurrentView} />;
         }
-        return <Withdrawals requests={withdrawals} onAction={handleWithdrawalAction} />;
+        // <--- 3. Ajuste: Componente agora busca seus proprios dados (sem props)
+        return <Withdrawals />;
       
       case 'waste': 
         return <WasteManagement user={currentUser} />;
@@ -248,7 +197,8 @@ export const App: React.FC = () => {
     const titles: {[key: string]: string} = {
       'dashboard': 'Painel de Controle',
       'inventory': 'Estoque de Reagentes',
-      'withdrawals': 'Aprovação de Retiradas',
+      'my-requests': 'Meus Pedidos', // <--- 4. Título Novo
+      'withdrawals': 'Central de Pedidos', // Nome atualizado
       'waste': 'Gestão de Resíduos',
     };
     return titles[view] || 'SIRU';
@@ -259,7 +209,6 @@ export const App: React.FC = () => {
       <div className={`min-h-screen font-sans text-slate-800 ${isHighContrast ? 'high-contrast' : ''}`} style={{ fontSize: `${fontSize}px` }}>
         <Login onLoginSuccess={handleLoginSuccess} />
         
-        {/* CORREÇÃO AQUI: Adicionado aria-label */}
         <ToastContainer 
           position="top-right" 
           autoClose={3000} 
@@ -289,6 +238,7 @@ export const App: React.FC = () => {
         
         <main id="main-content" className={`flex-1 p-8 overflow-y-auto h-[calc(100vh-120px)] relative transition-all duration-300 ${isSidebarCollapsed ? 'ml-20' : 'ml-72'}`}>
           
+          {/* Toast legado (opcional) */}
           {toast && (
             <div className={`fixed top-36 right-6 z-50 px-6 py-3 rounded-xl shadow-lg transform transition-all duration-300 flex items-center gap-3 ${
               toast.type === 'success' ? 'bg-green-600 text-white' : 
@@ -302,7 +252,7 @@ export const App: React.FC = () => {
             </div>
           )}
 
-          {/* CORREÇÃO AQUI: Adicionado aria-label */}
+          {/* Toast Principal */}
           <ToastContainer 
             position="top-right"
             autoClose={3000}

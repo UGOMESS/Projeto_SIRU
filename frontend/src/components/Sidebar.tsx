@@ -88,11 +88,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, user, onT
   const navItems = [
     { id: 'dashboard', name: 'Visão Geral', icon: 'fa-chart-pie' }, 
     { id: 'inventory', name: 'Estoque', icon: 'fa-flask' },
-    { id: 'withdrawals', name: 'Retiradas', icon: 'fa-dolly', adminOnly: true },
+    // NOVO: Adicionado para todos os usuários verem seus pedidos
+    { id: 'my-requests', name: 'Meus Pedidos', icon: 'fa-list-check' }, 
+    // ATUALIZADO: Nome mudou para Central de Pedidos (Admin Only)
+    { id: 'withdrawals', name: 'Central de Pedidos', icon: 'fa-dolly', adminOnly: true },
     { id: 'waste', name: 'Resíduos', icon: 'fa-recycle', adminOnly: true },
   ];
   
-  // ATUALIZADO: Webmail removido, Pergamum corrigido e Portal Unilab mantido
   const systemLinks = [
       { name: 'Portal Unilab', href: 'https://unilab.edu.br/' },
       { name: 'SIGAA', href: 'https://sig.unilab.edu.br/sigaa/' },

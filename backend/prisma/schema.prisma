@@ -18,6 +18,7 @@ enum Role {
 enum RequestStatus {
   PENDING
   APPROVED
+  COMPLETED // NOVO STATUS ADICIONADO
   REJECTED
 }
 
@@ -43,18 +44,18 @@ model User {
 }
 
 model Reagent {
-  id           String    @id @default(uuid())
-  name         String
-  casNumber    String?   // Identificação química
-  category     String    // Ex: Ácido, Solvente, Sal
-  description  String?
-  formula      String?   // Ex: H2SO4, C2H6O
+  id             String    @id @default(uuid())
+  name           String
+  casNumber      String?   // Identificação química
+  category       String    // Ex: Ácido, Solvente, Sal
+  description    String?
+  formula        String?   // Ex: H2SO4, C2H6O
   
   // Controle de Estoque
-  quantity     Float     // Quantidade atual
-  unit         Unit      // Unidade de medida
-  minQuantity  Float     // Alerta de estoque baixo (antigo minStockLevel)
-  location     String?   // Ex: Armário A, Prateleira 2
+  quantity       Float     // Quantidade atual
+  unit           Unit      // Unidade de medida
+  minQuantity    Float     // Alerta de estoque baixo (antigo minStockLevel)
+  location       String?   // Ex: Armário A, Prateleira 2
   
   // Controle de Validade e Segurança
   expirationDate DateTime

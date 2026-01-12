@@ -1,138 +1,143 @@
+// backend/src/controllers/RequestController.ts
+
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 
-export const RequestController = {
-  // 1. Criar um novo pedido
-  async create(req: Request, res: Response) {
+interface AuthRequest extends Request {
+  user?: {
+    id: string;
+    role: string;
+  }
+}
+
+export class RequestController {
+  
+  // 1. Criar Pedido
+  static async create(req: Request, res: Response) {
+    const userId = (req as AuthRequest).user?.id || (req as any).userId;
+    const { items } = req.body; 
+
+    if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado." });
+    }
+
     try {
-      const { reagentId, amount, reason } = req.body;
-      const userId = (req as any).userId; 
-
-      if (!reagentId || !amount) {
-        return res.status(400).json({ error: 'Dados incompletos.' });
+      if (!items || items.length === 0) {
+        return res.status(400).json({ error: "O pedido deve conter pelo menos um item." });
       }
 
-      const reagent = await prisma.reagent.findUnique({ where: { id: reagentId } });
-      if (!reagent) {
-        return res.status(404).json({ error: 'Reagente não encontrado.' });
+      // Validação de estoque
+      for (const item of items) {
+        const reagent = await prisma.reagent.findUnique({ where: { id: item.reagentId } });
+        
+        if (!reagent) {
+            return res.status(404).json({ error: `Reagente ID ${item.reagentId} não encontrado.` });
+        }
+        
+        if (reagent.quantity < Number(item.quantity)) {
+          return res.status(400).json({ error: `Estoque insuficiente para ${reagent.name}.` });
+        }
       }
 
-      const newRequest = await prisma.request.create({
+      const request = await prisma.request.create({
         data: {
-          userId: userId,
+          userId,
           status: 'PENDING',
-          reason: reason,
           items: {
-            create: [
-              {
-                reagentId: reagentId,
-                quantity: Number(amount)
-              }
-            ]
+            create: items.map((item: any) => ({
+              reagentId: item.reagentId,
+              quantity: Number(item.quantity)
+            }))
           }
         },
-        include: {
-          items: { include: { reagent: true } },
-          user: { select: { name: true, email: true } }
-        }
+        include: { items: true }
       });
 
-      return res.status(201).json(newRequest);
+      return res.status(201).json(request);
 
     } catch (error) {
-      console.error("Erro ao criar pedido:", error);
-      return res.status(500).json({ error: 'Erro interno.' });
+      console.error(error); // Mantemos apenas logs de ERRO real
+      return res.status(500).json({ error: "Erro ao criar pedido." });
     }
-  },
+  }
 
-  // 2. Listar pedidos (LIMPO)
-  async index(req: Request, res: Response) {
+  // 2. Listar Pedidos
+  static async index(req: Request, res: Response) {
+    const userId = (req as AuthRequest).user?.id || (req as any).userId;
+    const userRole = (req as AuthRequest).user?.role || (req as any).user?.role;
+
+    if (!userId) {
+        return res.status(401).json({ error: "Usuário não autenticado." });
+    }
+
     try {
-      const { userRole, userId } = req as any;
-
-      // Lógica de Permissão: ADMIN vê tudo, USER vê só os seus
-      const isAdmin = userRole?.toString().toUpperCase() === 'ADMIN';
-      const whereClause = isAdmin ? {} : { userId: userId };
-
+      const where = userRole === 'ADMIN' ? {} : { userId };
+      
       const requests = await prisma.request.findMany({
-        where: whereClause,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          user: { select: { name: true, role: true } },
-          items: {
-            include: { reagent: true }
-          }
-        }
+        where,
+        include: { 
+            user: { select: { name: true, email: true } },
+            items: { include: { reagent: true } }
+        },
+        orderBy: { createdAt: 'desc' }
       });
-
       return res.json(requests);
 
     } catch (error) {
-      console.error("Erro ao listar pedidos:", error);
-      return res.status(500).json({ error: 'Erro ao buscar pedidos' });
+      console.error(error);
+      return res.status(500).json({ error: "Erro ao buscar pedidos." });
     }
-  },
+  }
 
-  // 3. Atualizar Status (Aprovar/Recusar)
-  async updateStatus(req: Request, res: Response) {
+  // 3. Atualizar Status
+  static async updateStatus(req: Request, res: Response) {
+    const { id } = req.params;
+    const { status } = req.body;
+
     try {
-      const { id } = req.params;
-      const { status } = req.body;
-
-      // Validação básica do status
-      if (!['APPROVED', 'REJECTED'].includes(status)) {
-        return res.status(400).json({ error: 'Status inválido.' });
-      }
-
-      const existingRequest = await prisma.request.findUnique({
+      const request = await prisma.request.findUnique({
         where: { id },
         include: { items: true }
       });
 
-      if (!existingRequest) {
-        return res.status(404).json({ error: 'Pedido não encontrado.' });
-      }
+      if (!request) return res.status(404).json({ error: "Pedido não encontrado." });
 
-      if (existingRequest.status !== 'PENDING') {
-        return res.status(400).json({ error: 'Pedido já foi finalizado.' });
+      if (status === 'REJECTED') {
+         const updated = await prisma.request.update({ where: { id }, data: { status: 'REJECTED' } });
+         return res.json(updated);
       }
 
       if (status === 'APPROVED') {
-        // Transação: Atualiza Status E Baixa Estoque juntos
-        await prisma.$transaction(async (tx) => {
-          for (const item of existingRequest.items) {
-            const reagent = await tx.reagent.findUnique({ where: { id: item.reagentId } });
-            
-            if (!reagent || reagent.quantity < item.quantity) {
-              throw new Error(`Estoque insuficiente para o reagente ID: ${item.reagentId}`);
-            }
-
-            await tx.reagent.update({
-              where: { id: item.reagentId },
-              data: { quantity: { decrement: item.quantity } }
-            });
-          }
-
-          await tx.request.update({
-            where: { id },
-            data: { status: 'APPROVED' }
-          });
-        });
-
-        return res.json({ message: 'Pedido aprovado e estoque atualizado.' });
-
-      } else {
-        // Apenas recusa, sem mexer no estoque
-        const updatedRequest = await prisma.request.update({
-          where: { id },
-          data: { status: 'REJECTED' }
-        });
-        return res.json(updatedRequest);
+         const updated = await prisma.request.update({ where: { id }, data: { status: 'APPROVED' } });
+         return res.json(updated);
       }
 
-    } catch (error: any) {
-      console.error("Erro na atualização de status:", error);
-      return res.status(400).json({ error: error.message || 'Erro ao processar solicitação.' });
+      if (status === 'COMPLETED') {
+        for (const item of request.items) {
+           const reagent = await prisma.reagent.findUnique({ where: { id: item.reagentId } });
+           if (!reagent || reagent.quantity < item.quantity) {
+              return res.status(400).json({ error: `Estoque insuficiente.` });
+           }
+        }
+
+        await prisma.$transaction(async (tx) => {
+           for (const item of request.items) {
+              await tx.reagent.update({
+                 where: { id: item.reagentId },
+                 data: { quantity: { decrement: item.quantity } }
+              });
+           }
+           await tx.request.update({ where: { id }, data: { status: 'COMPLETED' } });
+        });
+
+        return res.json({ message: "Retirada confirmada e estoque atualizado." });
+      }
+
+      return res.status(400).json({ error: "Status inválido." });
+
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Erro ao atualizar status." });
     }
   }
-};
+}

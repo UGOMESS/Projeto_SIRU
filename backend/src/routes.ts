@@ -1,4 +1,5 @@
 // backend/src/routes.ts
+
 import { Router } from 'express';
 import { ReagentController } from './controllers/ReagentController';
 import { AuthController } from './controllers/AuthController';
@@ -13,7 +14,7 @@ const router = Router();
 // --- ROTA DE LOGIN (Pública) ---
 router.post('/login', AuthController.authenticate);
 
-// Rota de Teste
+// Rota de Teste de Saúde da API
 router.get('/', (req, res) => {
   res.send('API do SIRU está online! 🚀');
 });
@@ -25,12 +26,14 @@ router.get('/dashboard/stats', authMiddleware, DashboardController.getStats);
 router.get('/news', authMiddleware, NewsController.getNews);
 
 // --- ROTAS DE REAGENTES ---
-router.get('/reagents', ReagentController.index);
+// (Index é público para consulta, demais ações requerem login)
+router.get('/reagents', ReagentController.index); 
 router.post('/reagents', authMiddleware, ReagentController.create);
 router.put('/reagents/:id', authMiddleware, ReagentController.update);
 router.delete('/reagents/:id', authMiddleware, ReagentController.delete);
 
 // --- ROTAS DE PEDIDOS (Requests) ---
+// Responsáveis pelo fluxo: Solicitar -> Aprovar -> Baixar Estoque
 router.post('/requests', authMiddleware, RequestController.create);
 router.get('/requests', authMiddleware, RequestController.index);
 router.patch('/requests/:id/status', authMiddleware, RequestController.updateStatus);
@@ -40,8 +43,6 @@ router.patch('/requests/:id/status', authMiddleware, RequestController.updateSta
 // 1. Bombonas (Containers)
 router.get('/waste/containers', authMiddleware, WasteController.getContainers);
 router.post('/waste/containers', authMiddleware, WasteController.createContainer);
-
-// NOVAS ROTAS (Editar e Excluir Bombonas)
 router.put('/waste/containers/:id', authMiddleware, WasteController.updateContainer);
 router.delete('/waste/containers/:id', authMiddleware, WasteController.deleteContainer);
 
