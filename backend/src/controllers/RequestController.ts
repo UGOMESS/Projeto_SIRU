@@ -15,7 +15,8 @@ export class RequestController {
   // 1. Criar Pedido
   static async create(req: Request, res: Response) {
     const userId = (req as AuthRequest).user?.id || (req as any).userId;
-    const { items } = req.body; 
+    // ATUALIZAÇÃO: Capturando reason e usageDate
+    const { items, reason, usageDate } = req.body; 
 
     if (!userId) {
         return res.status(401).json({ error: "Usuário não autenticado." });
@@ -43,6 +44,7 @@ export class RequestController {
         data: {
           userId,
           status: 'PENDING',
+          reason: reason || '', // ATUALIZAÇÃO: Salvando o motivo no banco
           items: {
             create: items.map((item: any) => ({
               reagentId: item.reagentId,
@@ -56,7 +58,7 @@ export class RequestController {
       return res.status(201).json(request);
 
     } catch (error) {
-      console.error(error); // Mantemos apenas logs de ERRO real
+      console.error(error); 
       return res.status(500).json({ error: "Erro ao criar pedido." });
     }
   }
@@ -65,13 +67,20 @@ export class RequestController {
   static async index(req: Request, res: Response) {
     const userId = (req as AuthRequest).user?.id || (req as any).userId;
     const userRole = (req as AuthRequest).user?.role || (req as any).user?.role;
+    
+    // ATUALIZAÇÃO: Pegando o filtro da URL
+    const { onlyMine } = req.query;
 
     if (!userId) {
         return res.status(401).json({ error: "Usuário não autenticado." });
     }
 
     try {
-      const where = userRole === 'ADMIN' ? {} : { userId };
+      // LÓGICA DE FILTRO ATUALIZADA:
+      // Se for ADMIN e NÃO pediu "apenas meus", vê tudo (Central de Pedidos).
+      // Se for ADMIN e pediu "apenas meus", vê só os dele.
+      // Se for PESQUISADOR, vê só os dele (userId).
+      const where = (userRole === 'ADMIN' && onlyMine !== 'true') ? {} : { userId };
       
       const requests = await prisma.request.findMany({
         where,
