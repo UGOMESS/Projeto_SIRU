@@ -1,5 +1,3 @@
-// frontend/src/components/Dashboard.tsx
-
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { User, Reagent } from '../types';
@@ -35,24 +33,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
       const reagents: Reagent[] = reagentsRes.data;
       const requests = requestsRes.data;
 
-      // 1. CÁLCULO DINÂMICO DO GRÁFICO (Dados Reais)
-      // Agrupa os reagentes pela categoria real cadastrada no banco
       const categoryMap: Record<string, number> = {};
       reagents.forEach(r => {
           const cat = r.category || 'Outros';
           categoryMap[cat] = (categoryMap[cat] || 0) + 1;
       });
 
-      // Transforma em array para o gráfico
       const categoryStats = Object.entries(categoryMap).map(([name, qtd]) => ({
           name, 
           qtd
       }));
 
-      // 2. CÁLCULOS GERAIS
       const lowStock = reagents.filter(r => r.quantity <= (r.minStockLevel || 0)).length;
-      
-      // Filtros de Pedidos
       const pendingTotal = requests.filter((r: any) => r.status === 'PENDING').length;
       
       const myRequests = requests.filter((r: any) => r.userId === user.id);
@@ -63,10 +55,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
         totalReagents: reagents.length,
         lowStockReagents: lowStock,
         totalWaste: 0, 
-        pendingRequests: pendingTotal, // Visão Admin
-        myPending,   // Visão Pesquisador
-        myApproved,  // Visão Pesquisador
-        categoryStats // Gráfico real
+        pendingRequests: pendingTotal,
+        myPending,
+        myApproved,
+        categoryStats
       });
 
       setNews(newsRes.data || []);
@@ -77,6 +69,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
     }
   };
 
+  // Helper para cor da tag de notícia
+  const getCategoryTagColor = (category: string) => {
+    const cat = category || 'Geral';
+    if (cat.includes('Edital')) return 'bg-blue-100 text-blue-700 border-blue-200';
+    if (cat.includes('Evento')) return 'bg-green-100 text-green-700 border-green-200';
+    if (cat.includes('Aviso')) return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+    return 'bg-gray-100 text-gray-700 border-gray-200';
+  };
+
   const getWelcomeMessage = () => {
       if (!stats) return "Carregando informações...";
 
@@ -85,7 +86,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
             ? <span>Há <strong className="text-white bg-white/20 px-2 py-0.5 rounded border border-white/30">{stats.pendingRequests} pedidos</strong> aguardando sua aprovação.</span>
             : "Visão geral do SIRU. Todas as operações estão em dia.";
       } else {
-          // CORREÇÃO DA MENSAGEM DO PESQUISADOR
           const msgs = [];
           if (stats.myPending > 0) msgs.push(`${stats.myPending} pedidos aguardando aprovação`);
           if (stats.myApproved > 0) msgs.push(`${stats.myApproved} pedidos aguardando retirada`);
@@ -184,8 +184,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Gráfico de Rosca (DADOS REAIS AGORA) */}
+          {/* Gráfico de Rosca */}
           <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <div className="flex justify-between items-center mb-6">
                   <h3 className="font-bold text-gray-800 text-lg">Composição do Estoque</h3>
@@ -253,7 +252,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                       </div>
                   )}
 
-                  {/* Alerta de Pedidos para ADMIN */}
                   {user.role === 'ADMIN' && stats?.pendingRequests > 0 && (
                       <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-100">
                           <div className="flex items-center gap-2 mb-1">
@@ -269,7 +267,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                       </div>
                   )}
 
-                  {/* Alerta de Retirada para PESQUISADOR */}
                    {user.role !== 'ADMIN' && stats?.myApproved > 0 && (
                       <div className="p-4 bg-green-50 rounded-lg border border-green-100">
                           <div className="flex items-center gap-2 mb-1">
@@ -284,6 +281,46 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
               </div>
           </div>
       </div>
+
+      {/* SEÇÃO DE NOTÍCIAS: CONEXÃO UNILAB */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                  <i className="fa-solid fa-graduation-cap text-indigo-600"></i> Conexão Unilab
+              </h3>
+              <div className="flex gap-2">
+                  <span className="text-xs text-gray-400 flex items-center gap-1"><i className="fa-solid fa-arrows-left-right"></i> Deslize para ver mais</span>
+              </div>
+          </div>
+
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+              {news.length === 0 && (
+                  <div className="w-full text-center p-8 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                      <p className="text-gray-400 text-sm">Nenhuma notícia recente encontrada.</p>
+                  </div>
+              )}
+
+              {news.map((item, index) => (
+                  <div key={index} className="min-w-[280px] w-[280px] bg-gray-50 p-4 rounded-xl border border-gray-100 hover:border-indigo-200 hover:shadow-md transition-all flex flex-col h-full group">
+                      <div className="flex justify-between items-start mb-2">
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${getCategoryTagColor(item.category)}`}>
+                              {item.category || 'GERAL'}
+                          </span>
+                          <span className="text-[10px] text-gray-400">{item.date}</span>
+                      </div>
+                      <a href={item.link} target="_blank" rel="noopener noreferrer" className="font-bold text-gray-800 text-sm mb-2 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                          {item.title}
+                      </a>
+                      <div className="mt-auto pt-2">
+                          <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 font-medium hover:underline flex items-center gap-1">
+                              Ler matéria <i className="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                          </a>
+                      </div>
+                  </div>
+              ))}
+          </div>
+      </div>
+
     </div>
   );
 };
