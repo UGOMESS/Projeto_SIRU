@@ -1,3 +1,5 @@
+// frontend/src/App.tsx
+
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -7,6 +9,7 @@ import { WasteManagement } from './components/WasteManagement';
 import { Withdrawals } from './components/Withdrawals';
 import { AccessibilityDock } from './components/AccessibilityDock';
 import { MyRequests } from './components/MyRequests';
+import { MyProfile } from './components/MyProfile'; 
 import { Login } from './components/Login'; 
 import { User, Reagent, WithdrawalRequest } from './types';
 import { api, updateReagent } from './services/api'; 
@@ -118,6 +121,12 @@ export const App: React.FC = () => {
     setCurrentView('dashboard');
   };
 
+  // Atualiza o usuário localmente após edição no MyProfile sem precisar relogar
+  const handleUpdateLocalUser = (updatedUser: User) => {
+    setCurrentUser(updatedUser);
+    localStorage.setItem('siru_user', JSON.stringify(updatedUser));
+  };
+
   const handleFontSizeChange = (increase: boolean) => {
     setFontSize(prev => {
         const newSize = increase ? prev + 1 : prev - 1;
@@ -201,13 +210,17 @@ export const App: React.FC = () => {
                 user={currentUser} 
                 reagents={reagents} 
                 onAddReagent={handleAddReagent} 
-                onDeleteReagent={handleRequestDelete} // <--- Passa a função do Modal
+                onDeleteReagent={handleRequestDelete} 
                 onUpdateReagent={handleUpdateReagent} 
                 onRequestWithdrawal={handleCreateWithdrawalRequest} 
             />
         );
       
       case 'my-requests': return <MyRequests user={currentUser} />;
+      
+      case 'profile': 
+        return <MyProfile user={currentUser} onUpdateUser={handleUpdateLocalUser} />;
+      
       case 'withdrawals': return currentUser.role === 'ADMIN' ? <Withdrawals /> : <Dashboard user={currentUser} onNavigate={setCurrentView} />;
       case 'waste': return <WasteManagement user={currentUser} />;
       default: return <Dashboard user={currentUser} onNavigate={setCurrentView} />;
@@ -216,8 +229,12 @@ export const App: React.FC = () => {
 
   const getTitle = (view: string) => {
     const titles: {[key: string]: string} = {
-      'dashboard': 'Painel de Controle', 'inventory': 'Estoque de Reagentes',
-      'my-requests': 'Meus Pedidos', 'withdrawals': 'Central de Pedidos', 'waste': 'Gestão de Resíduos',
+      'dashboard': 'Painel de Controle', 
+      'inventory': 'Estoque de Reagentes',
+      'my-requests': 'Meus Pedidos', 
+      'withdrawals': 'Central de Pedidos', 
+      'waste': 'Gestão de Resíduos',
+      'profile': 'Meu Perfil',
     };
     return titles[view] || 'SIRU';
   };
@@ -249,17 +266,16 @@ export const App: React.FC = () => {
         />
         
         <main id="main-content" className={`flex-1 p-8 overflow-y-auto h-[calc(100vh-120px)] relative transition-all duration-300 ${isSidebarCollapsed ? 'ml-20' : 'ml-72'}`}>
+          
           <header className="mb-8 flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 capitalize">{getTitle(currentView)}</h1>
               <p className="text-sm text-gray-500 mt-1">Sistema Integrado de Reagentes da Unilab</p>
             </div>
-            <div className="flex items-center space-x-4">
-               <button onClick={handleLogout} className="px-3 py-1 text-sm text-red-600 border border-red-200 rounded hover:bg-red-50 transition-colors flex items-center gap-2">
-                 <i className="fa-solid fa-right-from-bracket"></i> Sair
-               </button>
-            </div>
+            
+            {/* Ícone de notificação removido, pois já existe um melhor na Sidebar */}
           </header>
+
           {renderView()}
         </main>
       </div>

@@ -7,9 +7,12 @@ import { RequestController } from './controllers/RequestController';
 import { WasteController } from './controllers/WasteController';
 import { DashboardController } from './controllers/DashboardController';
 import { NewsController } from './controllers/NewsController';
+// 1. Importação do novo Controller de Usuário
+import { UserController } from './controllers/UserController';
 import { authMiddleware } from './middlewares/authMiddleware';
 
 const router = Router();
+const userController = new UserController(); // Instância da classe
 
 // --- ROTA DE LOGIN (Pública) ---
 router.post('/login', AuthController.authenticate);
@@ -24,6 +27,10 @@ router.get('/dashboard/stats', authMiddleware, DashboardController.getStats);
 
 // Rota de Notícias (Scraping da Unilab)
 router.get('/news', authMiddleware, NewsController.getNews);
+
+// --- ROTAS DE USUÁRIOS (NOVO) ---
+// Rota para atualizar perfil (Nome/Senha)
+router.put('/users/:id', authMiddleware, userController.update);
 
 // --- ROTAS DE REAGENTES ---
 // (Index é público para consulta, demais ações requerem login)
