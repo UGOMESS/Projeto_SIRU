@@ -1,3 +1,4 @@
+// frontend/src/components/Dashboard.tsx
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { User, Reagent } from '../types';
@@ -9,11 +10,20 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
-  const [stats, setStats] = useState<any>(null);
-  const [news, setNews] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  // 1. Inicializa o estado com o que estiver no Cache (ou null se for a primeira vez)
+  const [stats, setStats] = useState<any>(() => {
+    const cached = localStorage.getItem('siru_dashboard_stats');
+    return cached ? JSON.parse(cached) : null;
+  });
 
-  // Cores para o gráfico
+  const [news, setNews] = useState<any[]>(() => {
+    const cached = localStorage.getItem('siru_dashboard_news');
+    return cached ? JSON.parse(cached) : [];
+  });
+
+  // Só mostra o loading inicial se NÃO houver cache
+  const [loading, setLoading] = useState(!stats);
+
   const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b'];
 
   useEffect(() => {
@@ -22,7 +32,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
 
   const fetchData = async () => {
     try {
-      setLoading(true);
+      // Se não tem stats no cache, o loading já está true. 
+      // Se tem, o sistema atualiza em background.
       
       const [reagentsRes, requestsRes, newsRes] = await Promise.all([
           api.get('/reagents'),
@@ -33,6 +44,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
       const reagents: Reagent[] = reagentsRes.data;
       const requests = requestsRes.data;
 
+      // ... lógica de processamento de dados (categoryMap, etc) ...
       const categoryMap: Record<string, number> = {};
       reagents.forEach(r => {
           const cat = r.category || 'Outros';
@@ -46,12 +58,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
 
       const lowStock = reagents.filter(r => r.quantity <= (r.minStockLevel || 0)).length;
       const pendingTotal = requests.filter((r: any) => r.status === 'PENDING').length;
-      
       const myRequests = requests.filter((r: any) => r.userId === user.id);
       const myPending = myRequests.filter((r: any) => r.status === 'PENDING').length;
       const myApproved = myRequests.filter((r: any) => r.status === 'APPROVED').length;
 
-      setStats({
+      const newStats = {
         totalReagents: reagents.length,
         lowStockReagents: lowStock,
         totalWaste: 0, 
@@ -59,9 +70,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
         myPending,
         myApproved,
         categoryStats
-      });
+      };
 
+      // 2. Salva os novos dados no Estado e no LocalStorage
+      setStats(newStats);
+      localStorage.setItem('siru_dashboard_stats', JSON.stringify(newStats));
+      
       setNews(newsRes.data || []);
+      localStorage.setItem('siru_dashboard_news', JSON.stringify(newsRes.data || []));
+
     } catch (error) {
       console.error(error);
     } finally {
@@ -79,7 +96,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
   };
 
   const getWelcomeMessage = () => {
-      if (!stats) return "Carregando informações...";
+      if (!stats) return "Sincronizando laboratório...";
 
       if (user.role === 'ADMIN') {
           return stats.pendingRequests > 0 
@@ -89,18 +106,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
           const msgs = [];
           if (stats.myPending > 0) msgs.push(`${stats.myPending} pedidos aguardando aprovação`);
           if (stats.myApproved > 0) msgs.push(`${stats.myApproved} pedidos aguardando retirada`);
-          
           if (msgs.length === 0) return "Visão geral do SIRU. Você não tem pedidos ativos no momento.";
-          
-          return (
-            <span>
-                Você tem <strong className="text-white bg-white/20 px-2 py-0.5 rounded border border-white/30">{msgs.join(' e ')}</strong>.
-            </span>
-          );
+          return <span>Você tem <strong className="text-white bg-white/20 px-2 py-0.5 rounded border border-white/30">{msgs.join(' e ')}</strong>.</span>;
       }
   };
 
-  if (loading) return (
+  // 3. Só exibe o Spinner se for a primeira vez absoluta (sem cache)
+  if (loading && !stats) return (
     <div className="flex flex-col justify-center items-center h-96 gap-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
         <p className="text-gray-500 animate-pulse font-medium">Sincronizando laboratório...</p>
@@ -108,8 +120,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
   );
 
   return (
-    <div className="space-y-8 animate-fade-in pb-10">
+    <div className="space-y-8 animate-fade-in pb-10 relative">
       
+      {/* Indicador de atualização sutil no topo se estiver carregando em background */}
+      {loading && stats && (
+        <div className="absolute -top-6 right-0 flex items-center gap-2 text-[10px] text-indigo-400 font-bold">
+           <i className="fa-solid fa-sync fa-spin"></i> ATUALIZANDO
+        </div>
+      )}
+
       {/* Banner de Boas-vindas */}
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
           <div className="relative z-10">
@@ -167,7 +186,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                     {user.role === 'ADMIN' ? 'Pendências' : 'Meus Pedidos'}
                   </p>
                   <h3 className="text-2xl font-bold text-gray-800">
-                    {user.role === 'ADMIN' ? (stats?.pendingRequests || 0) : (stats?.myPending + stats?.myApproved || 0)}
+                    {user.role === 'ADMIN' ? (stats?.pendingRequests || 0) : ((stats?.myPending || 0) + (stats?.myApproved || 0))}
                   </h3>
               </div>
           </div>
@@ -282,25 +301,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
           </div>
       </div>
 
-      {/* SEÇÃO DE NOTÍCIAS: CONEXÃO UNILAB */}
+      {/* SEÇÃO DE NOTÍCIAS */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-gray-800 flex items-center gap-2">
                   <i className="fa-solid fa-graduation-cap text-indigo-600"></i> Conexão Unilab
               </h3>
-              <div className="flex gap-2">
-                  <span className="text-xs text-gray-400 flex items-center gap-1"><i className="fa-solid fa-arrows-left-right"></i> Deslize para ver mais</span>
-              </div>
           </div>
 
           <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
-              {news.length === 0 && (
+              {news.length === 0 && !loading && (
                   <div className="w-full text-center p-8 bg-gray-50 rounded-lg border border-dashed border-gray-200">
                       <p className="text-gray-400 text-sm">Nenhuma notícia recente encontrada.</p>
                   </div>
               )}
 
-              {news.map((item, index) => (
+              {news.map((item: any, index: number) => (
                   <div key={index} className="min-w-[280px] w-[280px] bg-gray-50 p-4 rounded-xl border border-gray-100 hover:border-indigo-200 hover:shadow-md transition-all flex flex-col h-full group">
                       <div className="flex justify-between items-start mb-2">
                           <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${getCategoryTagColor(item.category)}`}>
@@ -320,7 +336,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
               ))}
           </div>
       </div>
-
     </div>
   );
 };
