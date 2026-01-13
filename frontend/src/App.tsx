@@ -10,6 +10,7 @@ import { Withdrawals } from './components/Withdrawals';
 import { AccessibilityDock } from './components/AccessibilityDock';
 import { MyRequests } from './components/MyRequests';
 import { MyProfile } from './components/MyProfile'; 
+import { UserManagement } from './components/UserManagement'; // 1. Importação da nova página
 import { Login } from './components/Login'; 
 import { User, Reagent, WithdrawalRequest } from './types';
 import { api, updateReagent } from './services/api'; 
@@ -27,14 +28,14 @@ const DeleteConfirmModal: React.FC<{
     if (!isOpen) return null;
     
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-[70] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-gray-200">
                 <div className="p-6 text-center">
                     <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
                         <i className="fa-solid fa-trash-can text-3xl"></i>
                     </div>
                     <h3 className="text-lg font-bold text-gray-800 mb-2">Excluir Item?</h3>
-                    <p className="text-gray-600 text-sm mb-6">
+                    <p className="text-gray-600 text-sm mb-6 font-medium">
                         Tem certeza que deseja excluir <strong>{itemName}</strong>? <br/>
                         Esta ação não pode ser desfeita.
                     </p>
@@ -68,13 +69,10 @@ export const App: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [fontSize, setFontSize] = useState(16);
-
   const [reagents, setReagents] = useState<Reagent[]>([]); 
-  
-  // Estados para o Modal de Exclusão
   const [itemToDelete, setItemToDelete] = useState<{id: string, name: string} | null>(null);
 
-  // --- Efeitos (Side Effects) ---
+  // --- Efeitos ---
   useEffect(() => {
     const storedUser = localStorage.getItem('siru_user');
     const storedToken = localStorage.getItem('siru_token');
@@ -93,13 +91,11 @@ export const App: React.FC = () => {
         const resReagents = await api.get('/reagents');
         setReagents(resReagents.data);
       } catch (error) {
-        console.error("Erro ao carregar dados:", error);
         if ((error as any).response?.status === 401) {
-              handleLogout();
+            handleLogout();
         }
       }
     };
-
     fetchData();
   }, [currentUser]); 
 
@@ -121,7 +117,6 @@ export const App: React.FC = () => {
     setCurrentView('dashboard');
   };
 
-  // Atualiza o usuário localmente após edição no MyProfile sem precisar relogar
   const handleUpdateLocalUser = (updatedUser: User) => {
     setCurrentUser(updatedUser);
     localStorage.setItem('siru_user', JSON.stringify(updatedUser));
@@ -139,30 +134,25 @@ export const App: React.FC = () => {
       const { id, ...reagentData } = newReagent;
       const response = await api.post('/reagents', reagentData);
       setReagents(prev => [response.data, ...prev]);
-      toastify.success('Reagente salvo com sucesso!');
+      toastify.success('Reagente salvo!');
     } catch (error) {
       toastify.error('Erro ao salvar reagente.');
     }
   };
 
-  // Abre o Modal
   const handleRequestDelete = (id: string) => {
     const reagent = reagents.find(r => r.id === id);
-    if (reagent) {
-        setItemToDelete({ id: reagent.id, name: reagent.name });
-    }
+    if (reagent) setItemToDelete({ id: reagent.id, name: reagent.name });
   };
 
-  // Executa a exclusão
   const confirmDeleteReagent = async () => {
     if (!itemToDelete) return;
-
     try {
         await api.delete(`/reagents/${itemToDelete.id}`);
         setReagents(prev => prev.filter(item => item.id !== itemToDelete.id));
-        toastify.success('Reagente excluído.');
+        toastify.success('Removido com sucesso.');
     } catch (error) {
-        toastify.error('Erro ao excluir reagente.');
+        toastify.error('Erro ao excluir.');
     } finally {
         setItemToDelete(null); 
     }
@@ -172,57 +162,45 @@ export const App: React.FC = () => {
     try {
       const saved = await updateReagent(updatedReagent.id, updatedReagent);
       setReagents(prev => prev.map(item => item.id === saved.id ? saved : item));
-      toastify.success('Reagente atualizado!');
+      toastify.success('Atualizado!');
     } catch (error) {
-      toastify.error('Erro ao atualizar reagente.');
+      toastify.error('Erro ao atualizar.');
     }
   };
 
   const handleCreateWithdrawalRequest = async (newRequest: WithdrawalRequest) => {
     try {
       const payload = {
-        items: [{
-            reagentId: newRequest.reagentId,
-            quantity: Number(newRequest.amount)
-        }],
+        items: [{ reagentId: newRequest.reagentId, quantity: Number(newRequest.amount) }],
         reason: newRequest.reason,
         usageDate: newRequest.usageDate
       };
-
       await api.post('/requests', payload);
-      toastify.success('Solicitação enviada! Acompanhe em "Meus Pedidos".');
+      toastify.success('Solicitação enviada!');
       setCurrentView('my-requests');
-
     } catch (error) {
-      toastify.error('Erro ao enviar solicitação.');
+      toastify.error('Erro ao solicitar.');
     }
   };
 
+  // --- Roteamento Interno ---
   const renderView = () => {
     if (!currentUser) return null;
     switch (currentView) {
-      case 'dashboard': 
-        return <Dashboard user={currentUser} onNavigate={setCurrentView} />;
-      
-      case 'inventory': 
-        return (
-            <Inventory 
-                user={currentUser} 
-                reagents={reagents} 
-                onAddReagent={handleAddReagent} 
-                onDeleteReagent={handleRequestDelete} 
-                onUpdateReagent={handleUpdateReagent} 
-                onRequestWithdrawal={handleCreateWithdrawalRequest} 
-            />
-        );
-      
+      case 'dashboard': return <Dashboard user={currentUser} onNavigate={setCurrentView} />;
+      case 'inventory': return (
+        <Inventory 
+            user={currentUser} reagents={reagents} 
+            onAddReagent={handleAddReagent} onDeleteReagent={handleRequestDelete} 
+            onUpdateReagent={handleUpdateReagent} onRequestWithdrawal={handleCreateWithdrawalRequest} 
+        />
+      );
       case 'my-requests': return <MyRequests user={currentUser} />;
-      
-      case 'profile': 
-        return <MyProfile user={currentUser} onUpdateUser={handleUpdateLocalUser} />;
-      
+      case 'profile': return <MyProfile user={currentUser} onUpdateUser={handleUpdateLocalUser} />;
       case 'withdrawals': return currentUser.role === 'ADMIN' ? <Withdrawals /> : <Dashboard user={currentUser} onNavigate={setCurrentView} />;
       case 'waste': return <WasteManagement user={currentUser} />;
+      // 2. Nova visão para Gestão de Usuários
+      case 'users': return currentUser.role === 'ADMIN' ? <UserManagement /> : <Dashboard user={currentUser} onNavigate={setCurrentView} />;
       default: return <Dashboard user={currentUser} onNavigate={setCurrentView} />;
     }
   };
@@ -235,22 +213,23 @@ export const App: React.FC = () => {
       'withdrawals': 'Central de Pedidos', 
       'waste': 'Gestão de Resíduos',
       'profile': 'Meu Perfil',
+      'users': 'Gerenciar Usuários', // 3. Título da nova view
     };
     return titles[view] || 'SIRU';
   };
 
   if (!currentUser) {
     return (
-      <div className={`min-h-screen font-sans text-slate-800 ${isHighContrast ? 'high-contrast' : ''}`} style={{ fontSize: `${fontSize}px` }}>
+      <div className={`min-h-screen font-sans ${isHighContrast ? 'high-contrast' : ''}`} style={{ fontSize: `${fontSize}px` }}>
         <Login onLoginSuccess={handleLoginSuccess} />
-        <ToastContainer position="top-right" autoClose={3000} theme="colored" aria-label="Notificações" />
+        <ToastContainer position="top-right" autoClose={3000} theme="colored" aria-label="Notificações do Sistema" />
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen bg-gray-50 font-sans text-slate-800 ${isHighContrast ? 'high-contrast' : ''}`} style={{ fontSize: `${fontSize}px` }}>
-        <ToastContainer position="top-right" autoClose={3000} theme="colored" aria-label="Notificações" />
+    <div className={`min-h-screen bg-gray-50 font-sans ${isHighContrast ? 'high-contrast' : ''}`} style={{ fontSize: `${fontSize}px` }}>
+        <ToastContainer position="top-right" autoClose={3000} theme="colored" aria-label="Notificações do Sistema" />
         <DeleteConfirmModal isOpen={!!itemToDelete} onClose={() => setItemToDelete(null)} onConfirm={confirmDeleteReagent} itemName={itemToDelete?.name || 'Item'} />
         
         <Header isSidebarCollapsed={isSidebarCollapsed} />
@@ -265,15 +244,12 @@ export const App: React.FC = () => {
           isOpen={!isSidebarCollapsed} onClose={() => setIsSidebarCollapsed(true)}
         />
         
-        <main id="main-content" className={`flex-1 p-8 overflow-y-auto h-[calc(100vh-120px)] relative transition-all duration-300 ${isSidebarCollapsed ? 'ml-20' : 'ml-72'}`}>
-          
+        <main id="main-content" className={`flex-1 p-8 overflow-y-auto h-[calc(100vh-120px)] transition-all duration-300 ${isSidebarCollapsed ? 'ml-20' : 'ml-72'}`}>
           <header className="mb-8 flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 capitalize">{getTitle(currentView)}</h1>
-              <p className="text-sm text-gray-500 mt-1">Sistema Integrado de Reagentes da Unilab</p>
+              <p className="text-sm text-gray-500 mt-1 font-medium italic">SIRU - Unilab Laboratórios</p>
             </div>
-            
-            {/* Ícone de notificação removido, pois já existe um melhor na Sidebar */}
           </header>
 
           {renderView()}

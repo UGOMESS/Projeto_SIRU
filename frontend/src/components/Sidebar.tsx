@@ -7,7 +7,7 @@ interface SidebarProps {
   activeView: string;
   setView: (view: string) => void;
   user: User;
-  onToggleRole: () => void; // Mantido para compatibilidade
+  onToggleRole: () => void; 
   isCollapsed: boolean;
   toggleSidebar: () => void;
   reagents: Reagent[];
@@ -33,7 +33,6 @@ const AlertsDrawer: React.FC<{
                 </button>
             </div>
             <div className="p-4 overflow-y-auto h-[calc(100%-65px)]">
-                {/* Low Stock Section */}
                 <div>
                     <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2 text-sm uppercase tracking-wide">
                         <i className="fa-solid fa-triangle-exclamation text-orange-500"></i>
@@ -57,7 +56,6 @@ const AlertsDrawer: React.FC<{
                     )}
                 </div>
 
-                {/* Recently Added Section */}
                 <div className="mt-6">
                     <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2 text-sm uppercase tracking-wide">
                         <i className="fa-solid fa-clock-rotate-left text-blue-500"></i>
@@ -73,7 +71,7 @@ const AlertsDrawer: React.FC<{
                             ))}
                         </ul>
                     ) : (
-                         <p className="text-sm text-gray-400 italic">Nenhum histórico recente.</p>
+                        <p className="text-sm text-gray-400 italic">Nenhum histórico recente.</p>
                     )}
                 </div>
             </div>
@@ -119,7 +117,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     activeView, 
     setView, 
     user, 
-    onToggleRole, 
     isCollapsed, 
     toggleSidebar, 
     reagents,
@@ -127,7 +124,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [isSystemsOpen, setIsSystemsOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [showLogoutModal, setShowLogoutModal] = useState(false); // Estado para controlar o modal de sair
+  const [showLogoutModal, setShowLogoutModal] = useState(false); 
   
   const lowStockReagents = reagents.filter(r => r.quantity > 0 && r.quantity <= (r.minStockLevel || 0));
   const lowStockCount = lowStockReagents.length;
@@ -141,6 +138,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'inventory', name: 'Estoque', icon: 'fa-flask' },
     { id: 'my-requests', name: 'Meus Pedidos', icon: 'fa-clipboard-list' }, 
     { id: 'withdrawals', name: 'Central de Pedidos', icon: 'fa-dolly', adminOnly: true },
+    // NOVO ITEM: GESTÃO DE USUÁRIOS
+    { id: 'users', name: 'Usuários', icon: 'fa-users-gear', adminOnly: true },
     { id: 'waste', name: 'Resíduos', icon: 'fa-recycle', adminOnly: true },
   ];
   
@@ -153,7 +152,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-    {/* Modal de Confirmação de Logout */}
     <LogoutConfirmModal 
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
@@ -165,7 +163,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     <aside className={`fixed top-0 left-0 h-full bg-blue-900 text-white transition-all duration-300 ease-in-out z-30 flex flex-col shadow-xl ${isCollapsed ? 'w-20' : 'w-72'}`}>
         
-        {/* Header da Sidebar */}
         <div className="flex items-center justify-between h-[80px] px-4 border-b border-blue-800 flex-shrink-0 bg-blue-950">
             <div className={`flex items-center gap-2 overflow-hidden transition-opacity duration-200 ${isCollapsed ? 'opacity-0 w-0' : 'opacity-100'}`}>
                 <i className="fa-solid fa-atom fa-spin-pulse text-green-400 text-xl"></i>
@@ -176,7 +173,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
         </div>
         
-        {/* Navegação */}
         <nav className="flex-grow p-3 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-700">
             <ul className="space-y-1">
                 {navItems.map(item => {
@@ -195,10 +191,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     )
                 })}
                 
-                {/* Separador */}
                 <div className="my-2 border-t border-blue-800/50"></div>
 
-                {/* Sistemas Externos */}
                  <li key="systems-accordion">
                     <button 
                         onClick={() => setIsSystemsOpen(!isSystemsOpen)}
@@ -225,7 +219,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     )}
                 </li>
 
-                {/* Botão Alertas */}
                 <li key='alerts'>
                     <button 
                         onClick={() => setIsDrawerOpen(true)}
@@ -234,7 +227,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <i className={`fa-solid fa-bell w-6 text-center text-lg`}></i>
                         {!isCollapsed && <span className="ml-3 font-medium whitespace-nowrap">Alertas</span>}
                         
-                        {/* Badge de Alerta */}
                         {lowStockCount > 0 && (
                             <span className={`absolute ${isCollapsed ? 'top-2 right-2 h-3 w-3 p-0' : 'top-3 right-3 px-1.5 py-0.5'} rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm flex items-center justify-center animate-pulse`}>
                                 {!isCollapsed && lowStockCount}
@@ -245,10 +237,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </ul>
         </nav>
 
-        {/* Footer com Botões de Ação */}
         <div className="p-4 border-t border-blue-800 bg-blue-950/50 space-y-2">
-            
-            {/* Botão Minha Conta */}
             <button 
               onClick={() => setView('profile')}
               className={`w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-blue-200 hover:bg-blue-800 hover:text-white rounded-lg transition-colors ${isCollapsed ? 'justify-center px-0' : ''}`}
@@ -258,7 +247,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className={`${isCollapsed ? 'hidden' : 'block'}`}>Minha Conta</span>
             </button>
 
-            {/* Botão Sair - AGORA ABRE O MODAL */}
             <button 
               onClick={() => setShowLogoutModal(true)} 
               className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-red-300 bg-red-900/20 border border-red-900/30 rounded-lg hover:bg-red-900/40 hover:text-red-200 transition-colors ${isCollapsed ? 'justify-center px-0' : ''}`}
