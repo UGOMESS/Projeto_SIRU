@@ -10,19 +10,22 @@ export interface User {
 export enum RequestStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED'
+  REJECTED = 'REJECTED',
+  COMPLETED = 'COMPLETED' // Adicionado para garantir compatibilidade com o fluxo completo
 }
 
 export interface Reagent {
   id: string;
   name: string;
   casNumber?: string;
+  brand?: string; // Adicionei brand como opcional pois estava nos componentes anteriores
   category: string;
   description?: string;
   formula?: string;
   quantity: number;
   unit: string;
-  minQuantity: number;
+  minQuantity: number; // Agora oficial (antes era minStockLevel)
+  minStockLevel?: number; // Opcional: Mantido temporariamente para não quebrar componentes antigos que usam esse nome
   location?: string;
   expirationDate: string;
   isControlled: boolean;
@@ -53,7 +56,7 @@ export interface WithdrawalRequest {
   unit?: string;
 }
 
-// --- AQUI ESTÃO OS TIPOS QUE FALTAVAM ---
+// --- GESTÃO DE RESÍDUOS (WASTE MANAGEMENT) ---
 
 export interface WasteContainer {
   id: string;
@@ -70,6 +73,6 @@ export interface WasteLog {
   description: string;
   quantity: number;
   date: string;
-  user: { name: string };          
+  user: { name: string };           
   container: { identifier: string; type: string };
 }
