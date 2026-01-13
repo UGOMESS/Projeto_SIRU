@@ -10,6 +10,40 @@ interface MyProfileProps {
   onUpdateUser: (updatedUser: User) => void;
 }
 
+// --- SUB-COMPONENTE: Modal de Confirmação de Segurança ---
+const SecurityConfirmModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+}> = ({ isOpen, onClose, onConfirm }) => {
+    if (!isOpen) return null;
+    
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[80] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-gray-200">
+                <div className="p-6 text-center">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
+                        <i className="fa-solid fa-shield-halved text-3xl"></i>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-800 mb-2">Confirmação de Segurança</h3>
+                    <p className="text-gray-600 text-sm mb-6">
+                        Você está prestes a alterar seus dados de acesso. <br/>
+                        Deseja realmente aplicar essas mudanças?
+                    </p>
+                    <div className="flex gap-3 justify-center">
+                        <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors">
+                            Cancelar
+                        </button>
+                        <button onClick={onConfirm} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-md transition-colors">
+                            Sim, Salvar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export const MyProfile: React.FC<MyProfileProps> = ({ user, onUpdateUser }) => {
   const [formData, setFormData] = useState({
     name: user.name,
@@ -19,39 +53,44 @@ export const MyProfile: React.FC<MyProfileProps> = ({ user, onUpdateUser }) => {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false); // Estado do modal
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // 1. Validação inicial (Botão do Formulário)
+  const handlePreSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
 
     // Validação básica de senha
     if (formData.password && formData.password !== formData.confirmPassword) {
       toast.error("As senhas não coincidem.");
-      setIsLoading(false);
       return;
     }
 
     if (formData.password && formData.password.length < 6) {
         toast.error("A senha deve ter pelo menos 6 caracteres.");
-        setIsLoading(false);
         return;
     }
 
+    // Se passou na validação, abre o modal de confirmação
+    setShowConfirmModal(true);
+  };
+
+  // 2. Ação real de salvar (Botão "Sim" do Modal)
+  const handleConfirmSave = async () => {
+    setShowConfirmModal(false);
+    setIsLoading(true);
+
     try {
-      // Prepara o payload (só envia senha se o usuário digitou algo)
       const payload: any = { name: formData.name };
       if (formData.password) {
         payload.password = formData.password;
       }
 
-      // Chama a API (Assumindo rota PUT /users/:id)
       const response = await api.put(`/users/${user.id}`, payload);
       
-      // Atualiza o estado global no App.tsx
       onUpdateUser({ ...user, name: formData.name });
       
       toast.success("Perfil atualizado com sucesso!");
-      setFormData(prev => ({ ...prev, password: '', confirmPassword: '' })); // Limpa campos de senha
+      setFormData(prev => ({ ...prev, password: '', confirmPassword: '' })); 
     } catch (error: any) {
       const msg = error.response?.data?.error || "Erro ao atualizar perfil.";
       toast.error(msg);
@@ -63,6 +102,13 @@ export const MyProfile: React.FC<MyProfileProps> = ({ user, onUpdateUser }) => {
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-20">
       
+      {/* Modal de Confirmação */}
+      <SecurityConfirmModal 
+        isOpen={showConfirmModal} 
+        onClose={() => setShowConfirmModal(false)} 
+        onConfirm={handleConfirmSave} 
+      />
+
       {/* Cartão de Identificação Visual */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 text-white shadow-xl flex flex-col md:flex-row items-center gap-6 relative overflow-hidden">
         <div className="relative z-10">
@@ -77,8 +123,6 @@ export const MyProfile: React.FC<MyProfileProps> = ({ user, onUpdateUser }) => {
                 {user.role === 'ADMIN' ? 'Administrador' : 'Pesquisador'}
             </span>
         </div>
-        
-        {/* Elemento decorativo de fundo */}
         <i className="fa-solid fa-id-card absolute -right-6 -bottom-6 text-[180px] opacity-10 rotate-12"></i>
       </div>
 
@@ -89,10 +133,9 @@ export const MyProfile: React.FC<MyProfileProps> = ({ user, onUpdateUser }) => {
             <h3 className="text-xl font-bold text-gray-800">Dados Pessoais & Segurança</h3>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Note que o onSubmit chama o handlePreSubmit (Validação), não o save direto */}
+        <form onSubmit={handlePreSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* Nome */}
                 <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome Completo</label>
                     <div className="relative">
@@ -106,8 +149,6 @@ export const MyProfile: React.FC<MyProfileProps> = ({ user, onUpdateUser }) => {
                         />
                     </div>
                 </div>
-
-                {/* Email (Read Only) */}
                 <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail (Não editável)</label>
                     <div className="relative">

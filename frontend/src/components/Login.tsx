@@ -91,7 +91,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         </form>
         
         <div className="mt-6 text-center text-sm text-gray-400">
-          <p>&copy; 2025 Engenharia de Computação - Unilab</p>
+          <p>&copy; 2026 Engenharia de Computação - Unilab</p>
         </div>
       </div>
     </div>

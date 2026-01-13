@@ -11,7 +11,7 @@ interface SidebarProps {
   isCollapsed: boolean;
   toggleSidebar: () => void;
   reagents: Reagent[];
-  onLogout: () => void; // <--- NOVA PROP OBRIGATÓRIA
+  onLogout: () => void;
 }
 
 // --- SUB-COMPONENTE: Gaveta de Alertas ---
@@ -81,6 +81,39 @@ const AlertsDrawer: React.FC<{
     </>
 );
 
+// --- SUB-COMPONENTE: Modal de Confirmação de Logout ---
+const LogoutConfirmModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+}> = ({ isOpen, onClose, onConfirm }) => {
+    if (!isOpen) return null;
+    
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-[90] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-gray-200">
+                <div className="p-6 text-center">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+                        <i className="fa-solid fa-right-from-bracket text-3xl pl-1"></i>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-800 mb-2">Sair do Sistema?</h3>
+                    <p className="text-gray-600 text-sm mb-6">
+                        Você será desconectado da sua conta.
+                    </p>
+                    <div className="flex gap-3 justify-center">
+                        <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors">
+                            Cancelar
+                        </button>
+                        <button onClick={onConfirm} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold shadow-md transition-colors">
+                            Sim, Sair
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // --- COMPONENTE PRINCIPAL ---
 export const Sidebar: React.FC<SidebarProps> = ({ 
     activeView, 
@@ -94,6 +127,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [isSystemsOpen, setIsSystemsOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false); // Estado para controlar o modal de sair
   
   const lowStockReagents = reagents.filter(r => r.quantity > 0 && r.quantity <= (r.minStockLevel || 0));
   const lowStockCount = lowStockReagents.length;
@@ -119,6 +153,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
+    {/* Modal de Confirmação de Logout */}
+    <LogoutConfirmModal 
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={() => {
+            setShowLogoutModal(false);
+            onLogout();
+        }}
+    />
+
     <aside className={`fixed top-0 left-0 h-full bg-blue-900 text-white transition-all duration-300 ease-in-out z-30 flex flex-col shadow-xl ${isCollapsed ? 'w-20' : 'w-72'}`}>
         
         {/* Header da Sidebar */}
@@ -214,9 +258,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className={`${isCollapsed ? 'hidden' : 'block'}`}>Minha Conta</span>
             </button>
 
-            {/* Botão Sair */}
+            {/* Botão Sair - AGORA ABRE O MODAL */}
             <button 
-              onClick={onLogout}
+              onClick={() => setShowLogoutModal(true)} 
               className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-red-300 bg-red-900/20 border border-red-900/30 rounded-lg hover:bg-red-900/40 hover:text-red-200 transition-colors ${isCollapsed ? 'justify-center px-0' : ''}`}
               title="Sair do Sistema"
             >
