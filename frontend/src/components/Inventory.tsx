@@ -1,11 +1,7 @@
-// frontend/src/components/Inventory.tsx
-
 import React, { useState } from 'react';
 import { Reagent, User, WithdrawalRequest, RequestStatus } from '../types';
-import { toast } from 'react-toastify';
+import { toast } from 'react-toastify'; // Mantido apenas para erros locais de validação se houver
 
-// Importando os componentes modulares
-// Certifique-se de que todos esses arquivos existem na pasta components
 import ReagentList from './ReagentList';
 import { AddReagentModal } from './AddReagentModal';
 import { RequestWithdrawalModal } from './RequestWithdrawalModal';
@@ -14,10 +10,10 @@ import { ReagentDetailsModal } from './ReagentDetailsModal';
 interface InventoryProps {
   reagents: Reagent[];
   user: User;
-  onAddReagent: (reagent: Reagent) => void;
-  onDeleteReagent: (id: string) => void;
-  onUpdateReagent: (reagent: Reagent) => void;
-  onRequestWithdrawal: (request: WithdrawalRequest) => void;
+  onAddReagent: (reagent: any) => Promise<void>;
+  onDeleteReagent: (id: string) => Promise<void>;
+  onUpdateReagent: (reagent: any) => Promise<void>;
+  onRequestWithdrawal: (request: any) => Promise<void>;
 }
 
 export const Inventory: React.FC<InventoryProps> = ({ 
@@ -28,7 +24,6 @@ export const Inventory: React.FC<InventoryProps> = ({
   onUpdateReagent,
   onRequestWithdrawal 
 }) => {
-  // --- Estados de Controle ---
   const [searchTerm, setSearchTerm] = useState('');
   
   // Controle dos Modais
@@ -40,7 +35,7 @@ export const Inventory: React.FC<InventoryProps> = ({
 
   const [selectedReagentForWithdrawal, setSelectedReagentForWithdrawal] = useState<Reagent | null>(null);
 
-  // --- Lógica de Filtro ---
+  // Filtro
   const filteredReagents = reagents.filter(reagent => {
     const term = searchTerm.toLowerCase().trim();
     return (
@@ -50,62 +45,51 @@ export const Inventory: React.FC<InventoryProps> = ({
     );
   });
 
-  // --- Handlers (Ações) ---
+  // --- Handlers ---
 
-  // 1. Abrir Modal de Criação
   const handleOpenCreate = () => {
-    setEditingReagent(undefined); // Garante que não é edição
+    setEditingReagent(undefined);
     setIsAddModalOpen(true);
   };
 
-  // 2. Abrir Modal de Edição
   const handleOpenEdit = (reagent: Reagent) => {
     setEditingReagent(reagent);
     setIsAddModalOpen(true);
   };
 
-  // 3. Salvar (Criar ou Editar)
-  const handleSaveReagent = (data: any) => {
+  const handleSaveReagent = async (data: any) => {
+    // CORREÇÃO: Removemos toast.success daqui pois o App.tsx já exibe
     try {
       if (editingReagent) {
-        onUpdateReagent(data); // O ID já vem dentro do data no componente AddReagentModal
-        toast.success('Reagente atualizado com sucesso!');
+        await onUpdateReagent({ ...data, id: editingReagent.id });
       } else {
-        onAddReagent(data);
-        toast.success('Reagente cadastrado com sucesso!');
+        await onAddReagent(data);
       }
       setIsAddModalOpen(false);
     } catch (error) {
-      toast.error('Erro ao salvar reagente.');
+      // Erro mantemos aqui caso o pai não capture
+      console.error(error);
     }
   };
 
-  // 4. Abrir Detalhes
   const handleViewDetails = (reagent: Reagent) => {
     setSelectedReagentForDetails(reagent);
     setIsDetailsModalOpen(true);
   };
 
-  // 5. Processar Retirada
-  const handleWithdrawalSubmit = (data: { amount: number; reason: string; usageDate: string; requestedBy: string }) => {
+  const handleWithdrawalSubmit = async (data: { amount: number; reason: string; usageDate: string }) => {
     if (!selectedReagentForWithdrawal) return;
 
-    const newRequest: WithdrawalRequest = {
-        id: '', // Será gerado pelo backend
+    // CORREÇÃO: Removemos toast.success daqui
+    const newRequest = {
         reagentId: selectedReagentForWithdrawal.id,
-        reagentName: selectedReagentForWithdrawal.name,
         amount: data.amount,
-        unit: selectedReagentForWithdrawal.unit,
-        requestedBy: data.requestedBy,
-        requestedAt: new Date().toISOString(),
-        status: RequestStatus.PENDING,
         reason: data.reason,
         usageDate: data.usageDate
     };
 
-    onRequestWithdrawal(newRequest);
+    await onRequestWithdrawal(newRequest);
     setSelectedReagentForWithdrawal(null);
-    toast.success('Solicitação enviada com sucesso!');
   };
 
   return (
@@ -117,7 +101,7 @@ export const Inventory: React.FC<InventoryProps> = ({
            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
              <i className="fa-solid fa-flask text-blue-600"></i> Inventário
            </h2>
-           <p className="text-sm text-gray-500">Gerencie o estoque, visualize validades e faça solicitações.</p>
+           <p className="text-sm text-gray-500">Gerencie o estoque e visualize validades.</p>
         </div>
 
         <div className="flex gap-3 w-full md:w-auto">
@@ -144,35 +128,31 @@ export const Inventory: React.FC<InventoryProps> = ({
         </div>
       </div>
 
-      {/* LISTA DE REAGENTES (Componente Modular) */}
+      {/* LISTA DE REAGENTES */}
       <ReagentList 
         reagents={filteredReagents}
         user={user}
         onDelete={onDeleteReagent}
-        onEdit={handleOpenEdit}              // Passa função de editar
-        onViewDetails={handleViewDetails}    // Passa função de detalhes (clique na linha)
-        onOpenWithdrawalModal={setSelectedReagentForWithdrawal} // Passa função de solicitar
+        onEdit={handleOpenEdit}
+        onViewDetails={handleViewDetails}
+        onOpenWithdrawalModal={setSelectedReagentForWithdrawal}
       />
 
       {/* --- MODAIS --- */}
-
-      {/* 1. Criar / Editar */}
       <AddReagentModal 
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAdd={handleSaveReagent}
-        initialData={editingReagent} // Se tiver dados, entra em modo edição
+        initialData={editingReagent}
         isEditing={!!editingReagent}
       />
 
-      {/* 2. Detalhes (Visualização Completa) */}
       <ReagentDetailsModal 
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
         reagent={selectedReagentForDetails}
       />
 
-      {/* 3. Solicitar Retirada */}
       <RequestWithdrawalModal 
         reagent={selectedReagentForWithdrawal}
         user={user}

@@ -4,8 +4,42 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api'; 
 import { WasteContainer, WasteLog } from '../types';
 import { generateWasteCSV, generateWastePDF } from '../utils/reportGenerator';
-// 1. IMPORTAR TOAST
 import { toast } from 'react-toastify';
+
+// --- SUB-COMPONENTE: Modal de Confirmação de Exclusão ---
+const DeleteWasteModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+    itemName: string;
+}> = ({ isOpen, onClose, onConfirm, itemName }) => {
+    if (!isOpen) return null;
+    
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[70] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-gray-200">
+                <div className="p-6 text-center">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+                        <i className="fa-solid fa-trash-can text-3xl"></i>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-800 mb-2">Excluir Bombona?</h3>
+                    <p className="text-gray-600 text-sm mb-6">
+                        Tem certeza que deseja excluir <strong>{itemName}</strong>? <br/>
+                        Esta ação removerá todo o histórico deste resíduo.
+                    </p>
+                    <div className="flex gap-3 justify-center">
+                        <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors">
+                            Cancelar
+                        </button>
+                        <button onClick={onConfirm} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold shadow-md transition-colors">
+                            Sim, Excluir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 interface WasteManagementProps {
   user: any;
@@ -26,11 +60,13 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
   // --- MODAIS ---
   const [showLogModal, setShowLogModal] = useState(false);
   const [showContainerModal, setShowContainerModal] = useState(false);
+  
+  // Estado para Modal de Exclusão
+  const [containerToDelete, setContainerToDelete] = useState<WasteContainer | null>(null);
 
   // --- ESTADOS DE FORMULÁRIO (CRUD) ---
   const [editingContainerId, setEditingContainerId] = useState<string | null>(null);
   
-  // Usando strings para inputs numéricos para melhor UX (evita 0 preso)
   const [newLog, setNewLog] = useState({ description: '', quantity: '', containerId: '' });
   const [containerForm, setContainerForm] = useState({ identifier: '', type: '', capacity: '', location: '' });
 
@@ -79,7 +115,6 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
   const handleSaveContainer = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validação
     if (!containerForm.identifier || !containerForm.capacity || !containerForm.type) {
         toast.warning("Preencha Identificador, Tipo e Capacidade.");
         return;
@@ -103,16 +138,24 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
     }
   };
 
-  const handleDeleteContainer = async (id: string) => {
-      if (!window.confirm("Atenção: Tem certeza que deseja excluir esta bombona?")) return;
+  // 1. Solicitar Exclusão (Abre Modal)
+  const handleRequestDelete = (container: WasteContainer) => {
+      setContainerToDelete(container);
+  };
+
+  // 2. Confirmar Exclusão (Executa API)
+  const confirmDeleteContainer = async () => {
+      if (!containerToDelete) return;
 
       try {
-          await api.delete(`/waste/containers/${id}`);
+          await api.delete(`/waste/containers/${containerToDelete.id}`);
           toast.success("Bombona removida.");
           fetchData();
       } catch (error: any) {
           const msg = error.response?.data?.error || "Erro ao excluir.";
           toast.error(msg);
+      } finally {
+          setContainerToDelete(null); // Fecha o modal
       }
   };
 
@@ -213,6 +256,14 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
   return (
     <div className="space-y-6 animate-fade-in pb-10">
       
+      {/* Modal de Confirmação de Exclusão */}
+      <DeleteWasteModal 
+        isOpen={!!containerToDelete} 
+        onClose={() => setContainerToDelete(null)} 
+        onConfirm={confirmDeleteContainer} 
+        itemName={containerToDelete?.identifier || 'Bombona'} 
+      />
+
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
         <div>
@@ -323,7 +374,8 @@ export const WasteManagement: React.FC<WasteManagementProps> = ({ user }) => {
                                 <button onClick={(e) => { e.stopPropagation(); openEditModal(container); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Editar">
                                     <i className="fa-solid fa-pen-to-square text-lg"></i>
                                 </button>
-                                <button onClick={(e) => { e.stopPropagation(); handleDeleteContainer(container.id); }} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Excluir">
+                                {/* BOTÃO DE EXCLUIR ATUALIZADO */}
+                                <button onClick={(e) => { e.stopPropagation(); handleRequestDelete(container); }} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Excluir">
                                     <i className="fa-solid fa-trash-can text-lg"></i>
                                 </button>
                             </div>
