@@ -1,5 +1,3 @@
-// frontend/src/components/MyProfile.tsx
-
 import React, { useState } from 'react';
 import { User } from '../types';
 import { api } from '../services/api';
@@ -26,8 +24,8 @@ const SecurityConfirmModal: React.FC<{
                         <i className="fa-solid fa-shield-halved text-3xl"></i>
                     </div>
                     <h3 className="text-lg font-bold text-gray-800 mb-2">Confirmação de Segurança</h3>
-                    <p className="text-gray-600 text-sm mb-6">
-                        Você está prestes a alterar seus dados de acesso. <br/>
+                    <p className="text-gray-600 text-sm mb-6 leading-relaxed">
+                        Você está prestes a alterar seus dados de acesso no SIRU. <br/>
                         Deseja realmente aplicar essas mudanças?
                     </p>
                     <div className="flex gap-3 justify-center">
@@ -53,28 +51,28 @@ export const MyProfile: React.FC<MyProfileProps> = ({ user, onUpdateUser }) => {
   });
 
   const [isLoading, setIsLoading] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false); // Estado do modal
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  
+  // Estados para visibilidade das senhas (Olho)
+  const [showPass, setShowPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
 
-  // 1. Validação inicial (Botão do Formulário)
   const handlePreSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validação básica de senha
     if (formData.password && formData.password !== formData.confirmPassword) {
-      toast.error("As senhas não coincidem.");
+      toast.error("As novas senhas não coincidem.");
       return;
     }
 
     if (formData.password && formData.password.length < 6) {
-        toast.error("A senha deve ter pelo menos 6 caracteres.");
+        toast.error("A nova senha deve ter pelo menos 6 caracteres.");
         return;
     }
 
-    // Se passou na validação, abre o modal de confirmação
     setShowConfirmModal(true);
   };
 
-  // 2. Ação real de salvar (Botão "Sim" do Modal)
   const handleConfirmSave = async () => {
     setShowConfirmModal(false);
     setIsLoading(true);
@@ -85,12 +83,14 @@ export const MyProfile: React.FC<MyProfileProps> = ({ user, onUpdateUser }) => {
         payload.password = formData.password;
       }
 
-      const response = await api.put(`/users/${user.id}`, payload);
+      await api.put(`/users/${user.id}`, payload);
       
       onUpdateUser({ ...user, name: formData.name });
       
       toast.success("Perfil atualizado com sucesso!");
-      setFormData(prev => ({ ...prev, password: '', confirmPassword: '' })); 
+      setFormData(prev => ({ ...prev, password: '', confirmPassword: '' }));
+      setShowPass(false);
+      setShowConfirmPass(false);
     } catch (error: any) {
       const msg = error.response?.data?.error || "Erro ao atualizar perfil.";
       toast.error(msg);
@@ -102,93 +102,113 @@ export const MyProfile: React.FC<MyProfileProps> = ({ user, onUpdateUser }) => {
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-20">
       
-      {/* Modal de Confirmação */}
       <SecurityConfirmModal 
         isOpen={showConfirmModal} 
         onClose={() => setShowConfirmModal(false)} 
         onConfirm={handleConfirmSave} 
       />
 
-      {/* Cartão de Identificação Visual */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 text-white shadow-xl flex flex-col md:flex-row items-center gap-6 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 text-white shadow-xl flex flex-col md:flex-row items-center gap-6 relative overflow-hidden border border-blue-400/20">
         <div className="relative z-10">
-            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-4xl font-bold text-blue-600 shadow-lg border-4 border-blue-200">
+            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-4xl font-bold text-blue-600 shadow-lg border-4 border-blue-200/50">
                 {user.name.charAt(0).toUpperCase()}
             </div>
         </div>
         <div className="text-center md:text-left relative z-10">
             <h2 className="text-3xl font-bold">{user.name}</h2>
-            <p className="text-blue-100 opacity-90">{user.email}</p>
-            <span className="inline-block mt-2 px-3 py-1 bg-white/20 rounded-full text-xs font-bold border border-white/30">
+            <p className="text-blue-100 opacity-90 font-medium">{user.email}</p>
+            <span className="inline-block mt-2 px-3 py-1 bg-white/20 rounded-full text-[10px] font-black uppercase border border-white/30 tracking-widest">
                 {user.role === 'ADMIN' ? 'Administrador' : 'Pesquisador'}
             </span>
         </div>
-        <i className="fa-solid fa-id-card absolute -right-6 -bottom-6 text-[180px] opacity-10 rotate-12"></i>
+        <i className="fa-solid fa-user-shield absolute -right-6 -bottom-6 text-[180px] opacity-10 rotate-12"></i>
       </div>
 
-      {/* Formulário de Edição */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:p-8">
         <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-4">
-            <i className="fa-solid fa-user-gear text-gray-400 text-xl"></i>
-            <h3 className="text-xl font-bold text-gray-800">Dados Pessoais & Segurança</h3>
+            <i className="fa-solid fa-user-gear text-blue-600 text-xl"></i>
+            <h3 className="text-xl font-bold text-gray-800 tracking-tight">Dados Pessoais & Segurança</h3>
         </div>
 
-        {/* Note que o onSubmit chama o handlePreSubmit (Validação), não o save direto */}
         <form onSubmit={handlePreSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome Completo</label>
-                    <div className="relative">
-                        <i className="fa-solid fa-user absolute left-3 top-3 text-gray-400"></i>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Nome Completo</label>
+                    <div className="relative group">
+                        <i className="fa-solid fa-user absolute left-3 top-3.5 text-gray-400 group-focus-within:text-blue-500 transition-colors"></i>
                         <input 
                             type="text" 
                             required
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            className="w-full pl-10 pr-4 py-3 border-2 border-gray-50 rounded-xl focus:border-blue-500 focus:bg-white bg-gray-50/50 outline-none transition-all font-medium text-gray-700"
                             value={formData.name}
                             onChange={e => setFormData({...formData, name: e.target.value})}
                         />
                     </div>
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail (Não editável)</label>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">E-mail (Login Institucional)</label>
                     <div className="relative">
-                        <i className="fa-solid fa-envelope absolute left-3 top-3 text-gray-400"></i>
+                        <i className="fa-solid fa-envelope absolute left-3 top-3.5 text-gray-400"></i>
                         <input 
                             type="email" 
                             disabled
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-500 cursor-not-allowed"
+                            className="w-full pl-10 pr-4 py-3 border-2 border-gray-100 bg-gray-100/50 rounded-xl text-gray-500 cursor-not-allowed font-medium"
                             value={formData.email}
                         />
                     </div>
                 </div>
             </div>
 
-            <div className="border-t border-gray-100 pt-6">
-                <h4 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
-                    <i className="fa-solid fa-lock text-orange-500"></i> Alterar Senha
+            <div className="pt-6 border-t border-gray-100">
+                <h4 className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                    <i className="fa-solid fa-key text-orange-500"></i> 
+                    Alterar Senha de Acesso
                 </h4>
-                <p className="text-xs text-gray-400 mb-4">Deixe os campos em branco se não quiser alterar sua senha.</p>
+                <p className="text-[11px] text-gray-400 mb-6 font-medium">Deixe os campos vazios caso não deseje atualizar sua senha.</p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nova Senha</label>
-                        <input 
-                            type="password" 
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                            placeholder="Mínimo 6 caracteres"
-                            value={formData.password}
-                            onChange={e => setFormData({...formData, password: e.target.value})}
-                        />
+                    {/* NOVA SENHA */}
+                    <div className="relative group">
+                        <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Nova Senha</label>
+                        <div className="relative">
+                            <i className="fa-solid fa-lock absolute left-3 top-3.5 text-gray-400 group-focus-within:text-blue-500 transition-colors"></i>
+                            <input 
+                                type={showPass ? "text" : "password"} 
+                                className="w-full pl-10 pr-10 py-3 border-2 border-gray-50 rounded-xl focus:border-blue-500 focus:bg-white bg-gray-50/50 outline-none transition-all font-medium"
+                                placeholder="Mínimo 6 caracteres"
+                                value={formData.password}
+                                onChange={e => setFormData({...formData, password: e.target.value})}
+                            />
+                            <button 
+                                type="button" 
+                                onClick={() => setShowPass(!showPass)}
+                                className="absolute right-3 top-3.5 text-gray-400 hover:text-blue-600 transition-colors"
+                            >
+                                <i className={`fa-solid ${showPass ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                            </button>
+                        </div>
                     </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Confirmar Senha</label>
-                        <input 
-                            type="password" 
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                            placeholder="Repita a nova senha"
-                            value={formData.confirmPassword}
-                            onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
-                        />
+
+                    {/* CONFIRMAR SENHA */}
+                    <div className="relative group">
+                        <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Confirmar Nova Senha</label>
+                        <div className="relative">
+                            <i className="fa-solid fa-shield-check absolute left-3 top-3.5 text-gray-400 group-focus-within:text-blue-500 transition-colors"></i>
+                            <input 
+                                type={showConfirmPass ? "text" : "password"} 
+                                className="w-full pl-10 pr-10 py-3 border-2 border-gray-50 rounded-xl focus:border-blue-500 focus:bg-white bg-gray-50/50 outline-none transition-all font-medium"
+                                placeholder="Repita a nova senha"
+                                value={formData.confirmPassword}
+                                onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
+                            />
+                            <button 
+                                type="button" 
+                                onClick={() => setShowConfirmPass(!showConfirmPass)}
+                                className="absolute right-3 top-3.5 text-gray-400 hover:text-blue-600 transition-colors"
+                            >
+                                <i className={`fa-solid ${showConfirmPass ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -197,9 +217,9 @@ export const MyProfile: React.FC<MyProfileProps> = ({ user, onUpdateUser }) => {
                 <button 
                     type="submit" 
                     disabled={isLoading}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-black py-4 px-10 rounded-xl shadow-lg shadow-blue-200 hover:shadow-xl transition-all transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2 uppercase text-xs tracking-widest"
                 >
-                    {isLoading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-check"></i>}
+                    {isLoading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-floppy-disk"></i>}
                     Salvar Alterações
                 </button>
             </div>

@@ -1,5 +1,3 @@
-// frontend/src/components/Sidebar.tsx
-
 import React, { useState } from 'react';
 import { User, Reagent } from '../types';
 
@@ -133,13 +131,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5);
 
-  const navItems = [
+  // Itens do dia a dia (Operacionais)
+  const operationalItems = [
     { id: 'dashboard', name: 'Visão Geral', icon: 'fa-chart-pie' }, 
     { id: 'inventory', name: 'Estoque', icon: 'fa-flask' },
     { id: 'my-requests', name: 'Meus Pedidos', icon: 'fa-clipboard-list' }, 
     { id: 'withdrawals', name: 'Central de Pedidos', icon: 'fa-dolly', adminOnly: true },
-    // NOVO ITEM: GESTÃO DE USUÁRIOS
-    { id: 'users', name: 'Usuários', icon: 'fa-users-gear', adminOnly: true },
     { id: 'waste', name: 'Resíduos', icon: 'fa-recycle', adminOnly: true },
   ];
   
@@ -175,7 +172,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         
         <nav className="flex-grow p-3 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-700">
             <ul className="space-y-1">
-                {navItems.map(item => {
+                {/* Renderiza Itens Operacionais */}
+                {operationalItems.map(item => {
                     if (item.adminOnly && user.role !== 'ADMIN') return null;
                     return (
                         <li key={item.id}>
@@ -193,7 +191,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 
                 <div className="my-2 border-t border-blue-800/50"></div>
 
-                 <li key="systems-accordion">
+                {/* Seção de Sistemas Unilab */}
+                <li key="systems-accordion">
                     <button 
                         onClick={() => setIsSystemsOpen(!isSystemsOpen)}
                         className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-blue-800 text-blue-200 ${isCollapsed ? 'justify-center' : ''}`}
@@ -219,6 +218,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     )}
                 </li>
 
+                {/* Item de Alertas */}
                 <li key='alerts'>
                     <button 
                         onClick={() => setIsDrawerOpen(true)}
@@ -234,6 +234,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         )}
                     </button>
                 </li>
+
+                {/* 1) NOVO POSICIONAMENTO: GESTÃO DE USUÁRIOS (ADMIN APENAS) */}
+                {user.role === 'ADMIN' && (
+                    <li key='users' className="mt-2">
+                        <button 
+                            onClick={() => setView('users')}
+                            title={isCollapsed ? 'Gestão de Usuários' : ''}
+                            className={`w-full flex items-center p-3 rounded-lg transition-all duration-200 ${activeView === 'users' ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-blue-800 text-blue-100 hover:text-white'} ${isCollapsed ? 'justify-center' : ''}`}
+                        >
+                            <i className="fa-solid fa-users-gear w-6 text-center text-lg"></i>
+                            {!isCollapsed && <span className="ml-3 font-medium whitespace-nowrap">Gerenciar Usuários</span>}
+                        </button>
+                    </li>
+                )}
             </ul>
         </nav>
 
