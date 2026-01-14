@@ -1,10 +1,8 @@
-// frontend/src/components/MyRequests.tsx
-
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { toast } from 'react-toastify';
 import { User } from '../types';
-import { RequestModal } from './RequestModal'; // <--- Importação da Modal
+import { RequestModal } from './RequestModal';
 
 interface MyRequestsProps {
   user: User;
@@ -14,7 +12,6 @@ export const MyRequests: React.FC<MyRequestsProps> = ({ user }) => {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Estados para controlar a Modal de Detalhes
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -24,7 +21,6 @@ export const MyRequests: React.FC<MyRequestsProps> = ({ user }) => {
 
   const fetchRequests = async () => {
     try {
-      // ATUALIZADO: Adiciona ?onlyMine=true para garantir que venham apenas os pedidos do usuário logado
       const response = await api.get('/requests?onlyMine=true');
       setRequests(response.data);
     } catch (error) {
@@ -34,7 +30,6 @@ export const MyRequests: React.FC<MyRequestsProps> = ({ user }) => {
     }
   };
 
-  // Função para abrir os detalhes
   const openDetails = (req: any) => {
     setSelectedRequest(req);
     setIsModalOpen(true);
@@ -67,7 +62,7 @@ export const MyRequests: React.FC<MyRequestsProps> = ({ user }) => {
         <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             <i className="fa-solid fa-list-check text-blue-600"></i> Meus Pedidos
         </h2>
-        <p className="text-sm text-gray-500 mt-1">Clique em um pedido na lista para ver os detalhes e a justificativa.</p>
+        <p className="text-sm text-gray-500 mt-1">Acompanhe suas solicitações e veja a previsão de uso informada.</p>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -75,19 +70,20 @@ export const MyRequests: React.FC<MyRequestsProps> = ({ user }) => {
             <table className="w-full text-left">
             <thead className="bg-gray-50 text-gray-600 text-sm uppercase">
                 <tr>
-                <th className="p-4">Data</th>
-                <th className="p-4">Itens Solicitados</th>
-                <th className="p-4 text-center">Status Atual</th>
+                  <th className="p-4">Solicitado em</th>
+                  <th className="p-4">Itens</th>
+                  {/* NOVA COLUNA: DATA DE USO */}
+                  <th className="p-4 text-center">Previsão de Uso</th>
+                  <th className="p-4 text-center">Status Atual</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
                 {requests.length > 0 ? requests.map(req => (
                 <tr 
                     key={req.id} 
-                    onClick={() => openDetails(req)} // <--- Clique para abrir detalhes
+                    onClick={() => openDetails(req)} 
                     className="hover:bg-blue-50 transition-colors cursor-pointer group"
                 >
-                    {/* Coluna DATA */}
                     <td className="p-4 text-sm text-gray-600 whitespace-nowrap align-top">
                         <div className="font-medium text-gray-800 group-hover:text-blue-700 transition-colors">
                             {new Date(req.createdAt).toLocaleDateString('pt-BR')}
@@ -97,7 +93,6 @@ export const MyRequests: React.FC<MyRequestsProps> = ({ user }) => {
                         </div>
                     </td>
 
-                    {/* Coluna ITENS */}
                     <td className="p-4 align-top">
                         <ul className="space-y-2">
                             {req.items.map((item: any) => (
@@ -107,13 +102,18 @@ export const MyRequests: React.FC<MyRequestsProps> = ({ user }) => {
                                 </li>
                             ))}
                         </ul>
-                        {/* Pequeno indicador visual de que há mais detalhes */}
-                        <div className="mt-2 text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <i className="fa-solid fa-eye mr-1"></i> Clique para ver detalhes
-                        </div>
                     </td>
 
-                    {/* Coluna STATUS */}
+                    {/* CONTEÚDO DA NOVA COLUNA: DATA DE USO */}
+                    <td className="p-4 text-center align-top">
+                      <div className="flex flex-col items-center justify-center gap-1">
+                        <i className="fa-regular fa-calendar-check text-indigo-400"></i>
+                        <span className="text-sm font-bold text-gray-700">
+                          {req.usageDate ? new Date(req.usageDate).toLocaleDateString('pt-BR') : '--'}
+                        </span>
+                      </div>
+                    </td>
+
                     <td className="p-4 text-center align-top">
                         <div className="flex flex-col items-center gap-2">
                             {getStatusBadge(req.status)}
@@ -126,7 +126,7 @@ export const MyRequests: React.FC<MyRequestsProps> = ({ user }) => {
                     </td>
                 </tr>
                 )) : (
-                <tr><td colSpan={3} className="p-12 text-center text-gray-400">
+                <tr><td colSpan={4} className="p-12 text-center text-gray-400">
                     <div className="flex flex-col items-center gap-2">
                         <i className="fa-solid fa-clipboard-list text-4xl opacity-20"></i>
                         <p>Você ainda não realizou nenhum pedido.</p>
@@ -139,7 +139,6 @@ export const MyRequests: React.FC<MyRequestsProps> = ({ user }) => {
       </div>
     </div>
 
-    {/* MODAL DE DETALHES INTEGRADA */}
     <RequestModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 

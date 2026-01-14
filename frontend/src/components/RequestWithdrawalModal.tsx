@@ -5,7 +5,8 @@ interface RequestWithdrawalModalProps {
   reagent: Reagent | null;
   user: User;
   onClose: () => void;
-  onSubmit: (data: { amount: number; reason: string; usageDate: string; requestedBy: string; }) => void;
+  // Ajustado para Promise para suportar o async do Inventory
+  onSubmit: (data: { amount: number; reason: string; usageDate: string }) => Promise<void>;
 }
 
 export const RequestWithdrawalModal: React.FC<RequestWithdrawalModalProps> = ({ reagent, user, onClose, onSubmit }) => {
@@ -13,10 +14,11 @@ export const RequestWithdrawalModal: React.FC<RequestWithdrawalModalProps> = ({ 
   const [reason, setReason] = useState('');
   const [usageDate, setUsageDate] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false); // Feedback de carregamento
 
   if (!reagent) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const requestedAmount = parseFloat(amount);
 
@@ -36,7 +38,6 @@ export const RequestWithdrawalModal: React.FC<RequestWithdrawalModalProps> = ({ 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Ajuste de fuso horário para garantir comparação correta do dia
     const selectedDate = new Date(usageDate);
     const userTimezoneOffset = selectedDate.getTimezoneOffset() * 60000;
     const selectedDateLocal = new Date(selectedDate.getTime() + userTimezoneOffset);
@@ -47,12 +48,21 @@ export const RequestWithdrawalModal: React.FC<RequestWithdrawalModalProps> = ({ 
     }
     
     setError('');
-    onSubmit({
-      amount: requestedAmount,
-      reason: reason,
-      usageDate: usageDate,
-      requestedBy: user.name,
-    });
+    setIsSubmitting(true);
+
+    try {
+      // Enviamos apenas o necessário para o RequestController.ts
+      await onSubmit({
+        amount: requestedAmount,
+        reason: reason,
+        usageDate: usageDate,
+      });
+      onClose(); // Fecha o modal após o sucesso
+    } catch (err) {
+      setError('Falha ao processar solicitação. Tente novamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -93,7 +103,8 @@ export const RequestWithdrawalModal: React.FC<RequestWithdrawalModalProps> = ({ 
                 value={amount} 
                 onChange={(e) => { setAmount(e.target.value); setError(''); }} 
                 required 
-                className="w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                disabled={isSubmitting}
+                className="w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all disabled:bg-gray-50"
                 max={reagent.quantity}
                 step="any"
                 placeholder="0.00"
@@ -110,7 +121,8 @@ export const RequestWithdrawalModal: React.FC<RequestWithdrawalModalProps> = ({ 
                 value={usageDate} 
                 onChange={(e) => { setUsageDate(e.target.value); setError(''); }}
                 required 
-                className="w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                disabled={isSubmitting}
+                className="w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all disabled:bg-gray-50"
               />
             </div>
           </div>
@@ -126,7 +138,8 @@ export const RequestWithdrawalModal: React.FC<RequestWithdrawalModalProps> = ({ 
               onChange={(e) => setReason(e.target.value)} 
               rows={3}
               required
-              className="w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              disabled={isSubmitting}
+              className="w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all disabled:bg-gray-50"
               placeholder="Descreva brevemente para qual experimento ou aula este reagente será utilizado..."
             />
           </div>
@@ -140,11 +153,19 @@ export const RequestWithdrawalModal: React.FC<RequestWithdrawalModalProps> = ({ 
           )}
 
           <div className="pt-2 flex justify-end gap-3 border-t border-gray-100 mt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium transition-colors">
+            <button type="button" onClick={onClose} disabled={isSubmitting} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium transition-colors">
               Cancelar
             </button>
-            <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-sm transition-transform active:scale-95 flex items-center gap-2">
-              <i className="fa-solid fa-paper-plane"></i> Enviar Solicitação
+            <button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-sm transition-transform active:scale-95 flex items-center gap-2 disabled:bg-blue-400"
+            >
+              {isSubmitting ? (
+                <> <i className="fa-solid fa-circle-notch fa-spin"></i> Enviando... </>
+              ) : (
+                <> <i className="fa-solid fa-paper-plane"></i> Enviar Solicitação </>
+              )}
             </button>
           </div>
         </form>

@@ -1,5 +1,3 @@
-// backend/src/controllers/RequestController.ts
-
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 
@@ -15,7 +13,6 @@ export class RequestController {
   // 1. Criar Pedido
   static async create(req: Request, res: Response) {
     const userId = (req as AuthRequest).user?.id || (req as any).userId;
-    // ATUALIZAÇÃO: Capturando reason e usageDate
     const { items, reason, usageDate } = req.body; 
 
     if (!userId) {
@@ -27,7 +24,7 @@ export class RequestController {
         return res.status(400).json({ error: "O pedido deve conter pelo menos um item." });
       }
 
-      // Validação de estoque
+      // Validação de estoque prévia
       for (const item of items) {
         const reagent = await prisma.reagent.findUnique({ where: { id: item.reagentId } });
         
@@ -40,11 +37,16 @@ export class RequestController {
         }
       }
 
+      // TRATAMENTO DA DATA: Forçamos a data para o meio do dia (12:00) 
+      // para evitar que o fuso horário mude o dia durante a conversão.
+      const normalizedUsageDate = usageDate ? new Date(`${usageDate}T12:00:00`) : null;
+
       const request = await prisma.request.create({
         data: {
           userId,
           status: 'PENDING',
-          reason: reason || '', // ATUALIZAÇÃO: Salvando o motivo no banco
+          reason: reason || '', 
+          usageDate: normalizedUsageDate,
           items: {
             create: items.map((item: any) => ({
               reagentId: item.reagentId,
@@ -58,8 +60,8 @@ export class RequestController {
       return res.status(201).json(request);
 
     } catch (error) {
-      console.error(error); 
-      return res.status(500).json({ error: "Erro ao criar pedido." });
+      console.error("Erro ao criar pedido:", error); 
+      return res.status(500).json({ error: "Erro ao criar pedido no banco de dados." });
     }
   }
 
@@ -67,8 +69,6 @@ export class RequestController {
   static async index(req: Request, res: Response) {
     const userId = (req as AuthRequest).user?.id || (req as any).userId;
     const userRole = (req as AuthRequest).user?.role || (req as any).user?.role;
-    
-    // ATUALIZAÇÃO: Pegando o filtro da URL
     const { onlyMine } = req.query;
 
     if (!userId) {
@@ -76,10 +76,6 @@ export class RequestController {
     }
 
     try {
-      // LÓGICA DE FILTRO ATUALIZADA:
-      // Se for ADMIN e NÃO pediu "apenas meus", vê tudo (Central de Pedidos).
-      // Se for ADMIN e pediu "apenas meus", vê só os dele.
-      // Se for PESQUISADOR, vê só os dele (userId).
       const where = (userRole === 'ADMIN' && onlyMine !== 'true') ? {} : { userId };
       
       const requests = await prisma.request.findMany({
@@ -88,12 +84,12 @@ export class RequestController {
             user: { select: { name: true, email: true } },
             items: { include: { reagent: true } }
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' } // Mantém a ordem de chegada
       });
       return res.json(requests);
 
     } catch (error) {
-      console.error(error);
+      console.error("Erro ao buscar pedidos:", error);
       return res.status(500).json({ error: "Erro ao buscar pedidos." });
     }
   }
@@ -111,13 +107,11 @@ export class RequestController {
 
       if (!request) return res.status(404).json({ error: "Pedido não encontrado." });
 
-      if (status === 'REJECTED') {
-         const updated = await prisma.request.update({ where: { id }, data: { status: 'REJECTED' } });
-         return res.json(updated);
-      }
-
-      if (status === 'APPROVED') {
-         const updated = await prisma.request.update({ where: { id }, data: { status: 'APPROVED' } });
+      if (status === 'REJECTED' || status === 'APPROVED') {
+         const updated = await prisma.request.update({ 
+           where: { id }, 
+           data: { status } 
+         });
          return res.json(updated);
       }
 
@@ -136,7 +130,10 @@ export class RequestController {
                  data: { quantity: { decrement: item.quantity } }
               });
            }
-           await tx.request.update({ where: { id }, data: { status: 'COMPLETED' } });
+           await tx.request.update({ 
+             where: { id }, 
+             data: { status: 'COMPLETED' } 
+           });
         });
 
         return res.json({ message: "Retirada confirmada e estoque atualizado." });
@@ -145,8 +142,8 @@ export class RequestController {
       return res.status(400).json({ error: "Status inválido." });
 
     } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: "Erro ao atualizar status." });
+      console.error("Erro ao atualizar status:", error);
+      return res.status(500).json({ error: "Erro interno ao processar alteração de status." });
     }
   }
 }

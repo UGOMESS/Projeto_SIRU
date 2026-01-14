@@ -1,5 +1,3 @@
-// frontend/src/components/RequestModal.tsx
-
 import React from 'react';
 
 interface RequestModalProps {
@@ -7,7 +5,7 @@ interface RequestModalProps {
   onClose: () => void;
   request: any; // O objeto do pedido
   mode: 'DETAILS' | 'CONFIRM_ACTION'; // Modo de visualização ou confirmação
-  actionType?: 'APPROVE' | 'REJECT' | 'COMPLETE'; // Qual ação está sendo confirmada (apenas para Admin)
+  actionType?: 'APPROVE' | 'REJECT' | 'COMPLETE'; // Qual ação está sendo confirmada
   onConfirm?: () => void; // Função ao clicar em confirmar
 }
 
@@ -33,7 +31,7 @@ export const RequestModal: React.FC<RequestModalProps> = ({
         {/* CONTEÚDO */}
         <div className="p-6 space-y-4">
           
-          {/* SEÇÃO DE CONFIRMAÇÃO (Só aparece se mode for CONFIRM_ACTION) */}
+          {/* SEÇÃO DE CONFIRMAÇÃO */}
           {mode === 'CONFIRM_ACTION' && (
              <div className="text-center mb-6">
                 <i className={`fa-solid text-4xl mb-3 ${
@@ -58,18 +56,29 @@ export const RequestModal: React.FC<RequestModalProps> = ({
           {/* DADOS DO PEDIDO (Visível em ambos os modos) */}
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 text-sm space-y-3">
              <div className="flex justify-between border-b border-gray-200 pb-2">
-                <span className="text-gray-500">Solicitante:</span>
+                <span className="text-gray-500 font-medium">Solicitante:</span>
                 <span className="font-bold text-gray-800">{request.user?.name || 'Eu'}</span>
              </div>
-             <div className="flex justify-between border-b border-gray-200 pb-2">
-                <span className="text-gray-500">Data do Pedido:</span>
-                <span className="font-medium">{new Date(request.createdAt).toLocaleDateString('pt-BR')} às {new Date(request.createdAt).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</span>
+
+             {/* DATAS EM DESTAQUE (Lado a Lado) */}
+             <div className="grid grid-cols-2 gap-4 border-b border-gray-200 pb-2">
+               <div>
+                  <span className="text-gray-400 text-[10px] uppercase font-black block">Data do Pedido</span>
+                  <span className="text-gray-700 font-medium">{new Date(request.createdAt).toLocaleDateString('pt-BR')}</span>
+               </div>
+               <div>
+                  <span className="text-blue-500 text-[10px] uppercase font-black block">Previsão de Uso</span>
+                  <span className="text-blue-700 font-black flex items-center gap-1">
+                    <i className="fa-regular fa-calendar-check"></i>
+                    {request.usageDate ? new Date(request.usageDate).toLocaleDateString('pt-BR') : 'Não informada'}
+                  </span>
+               </div>
              </div>
              
              {/* EXIBIÇÃO DO MOTIVO */}
              <div className="pt-1">
                 <span className="text-gray-500 block mb-1 font-medium">Motivo da Utilização:</span>
-                <div className="text-gray-700 italic bg-white p-3 rounded border border-gray-200 shadow-sm">
+                <div className="text-gray-700 italic bg-white p-3 rounded border border-gray-200 shadow-sm text-xs leading-relaxed">
                     "{request.reason || "Nenhum motivo informado."}"
                 </div>
              </div>
@@ -86,7 +95,6 @@ export const RequestModal: React.FC<RequestModalProps> = ({
                 </ul>
              </div>
           </div>
-
         </div>
 
         {/* RODAPÉ (BOTÕES) */}
