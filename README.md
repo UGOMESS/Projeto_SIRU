@@ -65,8 +65,6 @@ Com perfis de acesso distintos, o sistema atende às necessidades tanto dos admi
 - **Estilização:**
   - **Tailwind CSS:** Framework CSS utilitário para um design rápido e responsivo.
   - **Font Awesome:** Biblioteca de ícones.
-- **Inteligência Artificial:**
-  - **Google Gemini API (@google/genai):** Potencializa o Assistente de Segurança.
 - **Infraestrutura e Ferramentas:**
   - **Docker:** Containerização da aplicação e banco de dados.
   - **WSL 2:** Ambiente Linux no Windows.
@@ -127,45 +125,68 @@ Para executar o projeto em seu ambiente local, siga os passos abaixo rigorosamen
 
 ### Instalação
 
-1.  **Clone o repositório:**
-    ```bash
-    git clone https://github.com/seu-usuario/Projeto_SIRU.git
-    ```
+1.**Clone o repositório:**
+    
+  ```
+    git clone https://github.com/UGOMESS/Projeto_SIRU.git
+  ```
 
-2.  **Abrir o VS Code no Modo WSL:**
+2.**Abrir o VS Code no Modo WSL:**
   - Abra o VS Code.
   - Clique no ícone azul/verde no canto **inferior esquerdo** (`><`).
   - Selecione "Connect to WSL".
   - Selecione sua distro
   - Abra a pasta do projeto clonado (`File > Open Folder...`).
 
-3.  **Configurando o Banco de Dados**
+3.**🔧 Configuração e Instalação (Backend)**
 
-    
--  Abra o terminal integrado do VS Code (`Ctrl + J`).
--  Na raiz do projeto, inicie o container do banco:
+Após clonar o repositório, siga os passos abaixo para configurar o servidor e o banco de dados:
+
+4.**Acesse a pasta do backend:**
+   ```bash
+   cd backend
+   ```
+
+5.**Instale as dependências:**
+  ```bash
+   npm install
+  ```` 
+6.**Criar um arquivo chamado .env na pasta backend**
+
+7.**Cole o conteúdo abaixo dentro do arquivo .env (ajustado para o ambiente Docker padrão):**
+
+```
+DATABASE_URL="postgresql://user_siru:password_siru@localhost:5432/siru_db?schema=public"
+
+JWT_SECRET="segredo_para_testes_unilab"
+PORT=3000
+```
+8.**Inicie o Banco de Dados (Docker): Certifique-se de que o Docker Desktop esteja aberto e execute:**
+
+Deve ser rodado na raiz do projeto (PROJETO_SIRU)
 ```bash
-docker-compose up -d db
+docker compose up -d db
 ```
-  *(O Docker irá baixar a imagem do PostgreSQL e criar o banco automaticamente).*
+9.**Sincronize o Banco e Popule os Dados: Execute as migrações para criar as tabelas e o comando de seed para criar os usuários de teste:**
 
-4.  **Instalando Dependências**
+**Rode dentro da pasta Backend**
 
-**No Backend:**
-
-Em um novo terminal ( execute um por vez )
 ```
-cd backend
-npm install
-npx prisma generate  # Configura o cliente do banco
-npx prisma db push   # Cria as tabelas no banco de dados
+npx prisma migrate dev --name init
+npx prisma db seed
 ```
-**No Frontend:**
+
+10.**Iniciando o backend**
+```
+npx ts-node src/server.ts
+```
+11.**No Frontend:**
 
 Em um novo terminal
 ```
 cd frontend
 npm install
+npm run dev  #iniciando o frontend
 ```
 
 ---
@@ -178,7 +199,7 @@ npm install
 - Acesse a pasta do projeto SIRU
 - No terminal, confirme se o Banco de Dados esta ligado com o seguinte comando:
 ```
-docker-compose up -d db
+docker compose up -d db
 ````
 (Dica: Você pode verificar se o container ficou verde no aplicativo Docker Desktop).
 
